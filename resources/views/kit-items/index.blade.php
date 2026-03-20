@@ -21,9 +21,9 @@
             @endif
 
             <div class="mobile-card overflow-hidden sm:rounded-lg">
-                <div class="mobile-card-body" x-data="{ search: '' }">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Equipment — {{ $client->name }}</h3>
+                <div class="mobile-card-body overflow-x-hidden" x-data="{ search: '' }">
+                    <div class="grid grid-cols-1 gap-3 mb-4 sm:flex sm:items-center sm:justify-between">
+                        <h3 class="min-w-0 break-words pr-0 text-lg font-medium text-gray-900 sm:pr-4">Equipment — {{ $client->name }}</h3>
                         <a href="{{ route('clients.kit-items.create', $client) }}" class="w-full sm:w-auto">
                             <x-primary-button class="w-full justify-center sm:w-auto">Add Kit Item</x-primary-button>
                         </a>
@@ -38,7 +38,7 @@
                                 class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:w-80" />
                         </div>
 
-                        <div class="space-y-3 sm:hidden">
+                        <div class="block space-y-3 sm:hidden">
                             @foreach ($kitItems as $item)
                                 @php
                                     $statusColour = match($item->status) {
@@ -49,21 +49,28 @@
                                         default => 'bg-gray-100 text-gray-600',
                                     };
                                 @endphp
-                                <div class="mobile-list-card"
+                                <article class="mobile-list-card overflow-hidden"
                                     x-show="search === ''
                                         || '{{ strtolower($item->kitType->name) }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="block text-base font-semibold text-slate-900 hover:text-brand-red">{{ $item->kitType->name }}</a>
-                                            <p class="mt-1 text-sm text-slate-600">{{ $item->asset_tag ?? $item->serial_no ?? 'No asset or serial' }}</p>
+                                    <div class="space-y-4">
+                                        <div class="flex flex-col gap-3">
+                                            <div class="min-w-0">
+                                                <p class="mobile-meta-label">Equipment Type</p>
+                                                <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="mt-1 block break-words text-base font-semibold text-slate-900 hover:text-brand-red">{{ $item->kitType->name }}</a>
+                                            </div>
+                                            <div>
+                                                <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
+                                            </div>
                                         </div>
-                                        <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
-                                    </div>
 
-                                    <div class="mt-4 mobile-meta-grid">
+                                    <div class="mobile-meta-grid">
+                                        <div class="mobile-meta-item">
+                                            <p class="mobile-meta-label">Asset / Serial</p>
+                                            <p class="mobile-meta-value">{{ $item->asset_tag ?? $item->serial_no ?? 'No asset or serial' }}</p>
+                                        </div>
                                         <div class="mobile-meta-item">
                                             <p class="mobile-meta-label">Next Inspection Due</p>
                                             <p class="mobile-meta-value {{ $item->next_inspection_due?->isPast() ? 'text-red-600' : '' }}">{{ $item->next_inspection_due?->format('d M Y') ?? '—' }}</p>
@@ -74,7 +81,7 @@
                                         </div>
                                     </div>
 
-                                    <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50">
+                                    <details class="rounded-xl border border-slate-200 bg-slate-50">
                                         <summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-navy">Actions</summary>
                                         <div class="border-t border-slate-200 px-3 py-3 mobile-action-group">
                                             <a href="{{ route('clients.kit-items.inspections.create', [$client, $item]) }}" class="mobile-action-link">Inspect</a>
@@ -89,7 +96,7 @@
                                             </form>
                                         </div>
                                     </details>
-                                </div>
+                                </article>
                             @endforeach
                         </div>
 
