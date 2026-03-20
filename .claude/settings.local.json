@@ -49,7 +49,11 @@
       "Bash(do sed:*)",
       "Bash(done)",
       "mcp__laravel-boost__application-info",
-      "Bash(find /home/mike/Documents/VSCode/loler-kit/resources/views -type f -name *inspection* -o -name *report*)"
+      "Bash(find /home/mike/Documents/VSCode/loler-kit/resources/views -type f -name *inspection* -o -name *report*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''PHP require:'''', d.get\\(''''require'''',{}\\).get\\(''''php'''',''''''''\\)\\); print\\(''''Laravel:'''', d.get\\(''''require'''',{}\\).get\\(''''laravel/framework'''',''''''''\\)\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
