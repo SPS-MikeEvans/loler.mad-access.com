@@ -34,6 +34,7 @@ class KitType extends Model
         return [
             'interval_months' => 'integer',
             'lifts_people' => 'boolean',
+            'inspection_price' => 'float',
             'checklist_json' => 'array',
             'resources_links' => 'array',
         ];
