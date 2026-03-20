@@ -78,10 +78,19 @@
                                             <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap {{ $item->next_inspection_due?->isPast() ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
                                                 {{ $item->next_inspection_due?->format('d M Y') ?? '—' }}
                                             </td>
-                                            <td class="px-4 py-4 text-right text-sm" x-data="{ open: false }">
+                                            <td class="px-4 py-4 text-right text-sm" x-data="{
+                                                open: false,
+                                                dropX: 0,
+                                                dropY: 0,
+                                                toggle(event) {
+                                                    const rect = event.currentTarget.getBoundingClientRect();
+                                                    this.dropX = window.innerWidth - rect.right;
+                                                    this.dropY = rect.bottom + 4;
+                                                    this.open = !this.open;
+                                                }
+                                            }">
                                                 <div class="relative inline-block text-left">
-                                                    <button @click="open = !open"
-                                                            @click.outside="open = false"
+                                                    <button @click="toggle($event)"
                                                             type="button"
                                                             class="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:text-brand-navy hover:bg-gray-100 focus:outline-none transition">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -89,14 +98,17 @@
                                                         </svg>
                                                     </button>
 
+                                                    <template x-teleport="body">
                                                     <div x-show="open"
+                                                         @click.outside="open = false"
                                                          x-transition:enter="transition ease-out duration-100"
                                                          x-transition:enter-start="opacity-0 scale-95"
                                                          x-transition:enter-end="opacity-100 scale-100"
                                                          x-transition:leave="transition ease-in duration-75"
                                                          x-transition:leave-start="opacity-100 scale-100"
                                                          x-transition:leave-end="opacity-0 scale-95"
-                                                         class="absolute right-0 z-20 mt-1 w-44 bg-white rounded-lg shadow-lg ring-1 ring-black/5 divide-y divide-gray-100"
+                                                         :style="`position: fixed; right: ${dropX}px; top: ${dropY}px; z-index: 9999;`"
+                                                         class="w-44 bg-white rounded-lg shadow-lg ring-1 ring-black/5 divide-y divide-gray-100"
                                                          style="display: none;">
                                                         <div class="py-1">
                                                             <a href="{{ route('clients.kit-items.inspections.create', [$client, $item]) }}"
@@ -130,6 +142,7 @@
                                                             </form>
                                                         </div>
                                                     </div>
+                                                    </template>
                                                 </div>
                                             </td>
                                         </tr>
