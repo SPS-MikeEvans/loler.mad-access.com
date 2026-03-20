@@ -71,6 +71,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/photo-capture/{token}', [PhotoCaptureController::class, 'show'])->name('photo-capture.show');
 Route::post('/photo-capture/{token}', [PhotoCaptureController::class, 'upload'])->name('photo-capture.upload');
 Route::get('/photo-capture/{token}/status', [PhotoCaptureController::class, 'status'])->name('photo-capture.status');
+Route::get('/photo-capture/{token}/qr', [PhotoCaptureController::class, 'qrCode'])->name('photo-capture.qr');
 
 Route::get('/inspect/{qrCode}', [MobileInspectionController::class, 'scanStart'])
     ->name('inspect.qr')

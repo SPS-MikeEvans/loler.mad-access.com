@@ -196,7 +196,9 @@
                                                             <span class="font-medium text-brand-navy">{{ $check['category'] }}</span> — {{ $check['text'] }}
                                                         </p>
                                                         <div class="flex justify-center mb-3">
-                                                            {!! \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->errorCorrection('M')->generate(route('photo-capture.show', $uploadTokens[$i])) !!}
+                                                            <img x-show="open"
+                                                                 src="{{ route('photo-capture.qr', $uploadTokens[$i]) }}"
+                                                                 width="180" height="180" alt="QR code">
                                                         </div>
                                                         <p class="text-xs text-gray-400 mb-4 break-all">{{ route('photo-capture.show', $uploadTokens[$i]) }}</p>
                                                         <div x-show="photos.length > 0" class="flex flex-wrap gap-2 justify-center mb-3">
