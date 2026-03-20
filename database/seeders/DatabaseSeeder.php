@@ -15,14 +15,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'Admin',
-            'email' => 'admin@lolerkit.test',
-            'password' => bcrypt('password'),
-            'role' => 'admin',
-            'competent_person_flag' => true,
-            'client_id' => null,
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@lolerkit.test'],
+            [
+                'name' => 'Admin',
+                'password' => bcrypt('password'),
+                'role' => 'admin',
+                'competent_person_flag' => true,
+                'client_id' => null,
+            ]
+        );
 
         $this->call(KitTypeSeeder::class);
         $this->call(ChecklistSeeder::class);
