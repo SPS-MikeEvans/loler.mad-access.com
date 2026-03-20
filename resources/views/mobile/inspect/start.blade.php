@@ -1,13 +1,16 @@
 <x-mobile-layout title="Start Inspection">
-    <div class="min-h-screen flex flex-col">
+    <div class="min-h-screen flex flex-col bg-slate-100">
 
         {{-- Header --}}
         <header class="bg-brand-navy text-white px-4 py-4 flex items-center gap-3">
             <x-application-logo class="w-8 h-8 fill-current text-white/70" />
-            <span class="font-semibold text-lg">{{ config('app.name') }}</span>
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-[0.18em] text-white/55">Mobile Inspection</p>
+                <span class="font-semibold text-lg">{{ config('app.name') }}</span>
+            </div>
         </header>
 
-        <div class="flex-1 px-4 py-6 space-y-5">
+        <div class="flex-1 px-4 py-6 space-y-5 mobile-bottom-safe">
 
             {{-- Competency warning --}}
             @if($competencyWarning)
@@ -23,10 +26,11 @@
             @endif
 
             {{-- Kit details card --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-                <p class="text-xs font-semibold text-brand-navy uppercase tracking-wide mb-1">{{ $kitItem->kitType->category }}</p>
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold text-brand-navy uppercase tracking-[0.18em] mb-1">{{ $kitItem->kitType->category }}</p>
                 <h1 class="text-xl font-bold text-gray-900">{{ $kitItem->kitType->name }}</h1>
                 <p class="text-gray-500 text-sm mt-0.5">{{ $kitItem->client->name }}</p>
+                <p class="mt-3 text-sm leading-6 text-slate-600">Everything needed to begin the field inspection is stacked below, with key asset details surfaced first.</p>
 
                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -52,12 +56,12 @@
 
             {{-- Resume draft --}}
             @if($draft)
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                     <p class="text-sm font-semibold text-amber-800">Draft in progress</p>
                     <p class="text-xs text-amber-700 mt-0.5">Started {{ $draft->started_at->diffForHumans() }}</p>
                 </div>
                 <a href="{{ route('mobile.inspect.wizard', [$draft, 0]) }}"
-                   class="block w-full text-center bg-amber-500 hover:bg-amber-600 text-white font-semibold text-lg py-4 rounded-xl transition">
+                   class="block w-full text-center bg-amber-500 hover:bg-amber-600 text-white font-semibold text-lg py-4 rounded-2xl transition">
                     Resume Inspection
                 </a>
                 <div class="text-center">
@@ -70,7 +74,7 @@
                 <form method="POST" action="{{ route('mobile.inspect.create-draft', $kitItem) }}">
                     @csrf
                     <button type="submit"
-                            class="w-full bg-brand-navy hover:bg-brand-red text-white font-semibold text-lg py-4 rounded-xl transition {{ $draft ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : '' }}">
+                            class="w-full bg-brand-navy hover:bg-brand-red text-white font-semibold text-lg py-4 rounded-2xl transition {{ $draft ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : '' }}">
                         {{ $draft ? 'Start New Inspection' : 'Start Inspection' }}
                     </button>
                 </form>

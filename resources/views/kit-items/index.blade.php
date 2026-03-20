@@ -5,8 +5,8 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-6 sm:py-12">
+        <div class="max-w-7xl mx-auto mobile-shell">
 
             @if (session('success'))
                 <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded-lg">
@@ -20,12 +20,12 @@
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6" x-data="{ search: '' }">
-                    <div class="flex items-center justify-between mb-4">
+            <div class="mobile-card overflow-hidden sm:rounded-lg">
+                <div class="mobile-card-body" x-data="{ search: '' }">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                         <h3 class="text-lg font-medium text-gray-900">Equipment — {{ $client->name }}</h3>
-                        <a href="{{ route('clients.kit-items.create', $client) }}">
-                            <x-primary-button>Add Kit Item</x-primary-button>
+                        <a href="{{ route('clients.kit-items.create', $client) }}" class="w-full sm:w-auto">
+                            <x-primary-button class="w-full justify-center sm:w-auto">Add Kit Item</x-primary-button>
                         </a>
                     </div>
 
@@ -35,10 +35,65 @@
                         <div class="mb-4">
                             <input x-model="search" type="search"
                                 placeholder="Filter by type, asset tag, serial number or status…"
-                                class="block w-full sm:w-80 border-gray-300 rounded-md shadow-sm text-sm focus:border-brand-red focus:ring-brand-red" />
+                                class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:w-80" />
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="space-y-3 sm:hidden">
+                            @foreach ($kitItems as $item)
+                                @php
+                                    $statusColour = match($item->status) {
+                                        'in_service' => 'bg-green-100 text-green-800',
+                                        'inspection_due' => 'bg-yellow-100 text-yellow-800',
+                                        'quarantined' => 'bg-red-100 text-red-800',
+                                        'retired' => 'bg-gray-100 text-gray-600',
+                                        default => 'bg-gray-100 text-gray-600',
+                                    };
+                                @endphp
+                                <div class="mobile-list-card"
+                                    x-show="search === ''
+                                        || '{{ strtolower($item->kitType->name) }}'.includes(search.toLowerCase())
+                                        || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
+                                        || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
+                                        || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="block text-base font-semibold text-slate-900 hover:text-brand-red">{{ $item->kitType->name }}</a>
+                                            <p class="mt-1 text-sm text-slate-600">{{ $item->asset_tag ?? $item->serial_no ?? 'No asset or serial' }}</p>
+                                        </div>
+                                        <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
+                                    </div>
+
+                                    <div class="mt-4 mobile-meta-grid">
+                                        <div class="mobile-meta-item">
+                                            <p class="mobile-meta-label">Next Inspection Due</p>
+                                            <p class="mobile-meta-value {{ $item->next_inspection_due?->isPast() ? 'text-red-600' : '' }}">{{ $item->next_inspection_due?->format('d M Y') ?? '—' }}</p>
+                                        </div>
+                                        <div class="mobile-meta-item">
+                                            <p class="mobile-meta-label">Inspection Access</p>
+                                            <p class="mobile-meta-value">Desktop and mobile options available</p>
+                                        </div>
+                                    </div>
+
+                                    <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50">
+                                        <summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-navy">Actions</summary>
+                                        <div class="border-t border-slate-200 px-3 py-3 mobile-action-group">
+                                            <a href="{{ route('clients.kit-items.inspections.create', [$client, $item]) }}" class="mobile-action-link">Inspect</a>
+                                            <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="mobile-action-link">View</a>
+                                            <a href="{{ route('clients.kit-items.edit', [$client, $item]) }}" class="mobile-action-link">Edit</a>
+                                            <form method="POST" action="{{ route('clients.kit-items.destroy', [$client, $item]) }}" class="w-full">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="mobile-action-link w-full border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50" onclick="return confirm('Delete this kit item?')">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </details>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="hidden sm:block overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>

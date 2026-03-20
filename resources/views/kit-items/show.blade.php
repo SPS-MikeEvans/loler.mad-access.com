@@ -8,8 +8,8 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-6 sm:py-12">
+        <div class="max-w-4xl mx-auto mobile-shell mobile-stack">
 
             @if (session('success'))
                 <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded-lg">
@@ -23,8 +23,8 @@
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
+            <div class="mobile-card overflow-hidden sm:rounded-lg">
+                <div class="mobile-card-body">
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Equipment Type</dt>
@@ -103,48 +103,89 @@
                     </dl>
                 </div>
 
-                <div class="px-6 py-4 bg-gray-50 flex items-center gap-4 flex-wrap">
+                <div class="px-4 py-4 bg-gray-50 sm:px-6">
+                    <div class="mobile-action-group">
                     <a href="{{ route('clients.kit-items.inspections.create', [$client, $kitItem]) }}"
-                       class="inline-flex items-center px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 shadow-sm">
-                        Start New LOLER Inspection →
+                       class="inline-flex w-full items-center justify-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-700 sm:w-auto">
+                        Start LOLER Inspection
                     </a>
                     <a href="{{ route('mobile.inspect.start', $kitItem) }}"
-                       class="inline-flex items-center px-5 py-2.5 bg-brand-navy text-white font-medium rounded-lg hover:bg-brand-red shadow-sm transition duration-150">
-                        📱 Start Mobile Inspection
+                       class="inline-flex w-full items-center justify-center rounded-xl bg-brand-navy px-5 py-3 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-red sm:w-auto">
+                        Start Mobile Inspection
                     </a>
                     <a href="{{ route('clients.kit-items.edit', [$client, $kitItem]) }}"
-                       class="inline-flex items-center px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600">
+                       class="mobile-action-link border-amber-200 text-amber-700 hover:border-amber-300 hover:bg-amber-50">
                         Edit
                     </a>
-                    <a href="{{ route('clients.kit-items.index', $client) }}" class="text-sm text-brand-navy hover:text-brand-red">
-                        ← Back to Kit List
+                    <a href="{{ route('clients.kit-items.index', $client) }}" class="mobile-action-link">
+                        Back to Kit List
                     </a>
+                    </div>
                 </div>
             </div>
 
             {{-- QR Code --}}
             @if ($qrSvg)
-                <div class="mt-6 bg-white shadow-sm sm:rounded-lg p-6">
+                <div class="mobile-card">
+                    <div class="mobile-card-body">
                     <h3 class="text-base font-semibold text-gray-900 mb-4">QR Code</h3>
-                    <div class="flex items-start gap-6">
-                        <div class="w-40 h-40 flex-shrink-0">{!! $qrSvg !!}</div>
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                        <div class="w-40 h-40 flex-shrink-0 self-center sm:self-auto">{!! $qrSvg !!}</div>
                         <div class="text-sm text-gray-600">
                             <p>Scan this code to open the kit item page directly.</p>
                             <p class="mt-2 break-all text-xs text-gray-400">{{ $kitItem->qr_code }}</p>
                         </div>
                     </div>
+                    </div>
                 </div>
             @endif
 
             {{-- Inspection history --}}
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+            <div class="mobile-card overflow-hidden sm:rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="font-semibold text-gray-900">Inspection History</h3>
                 </div>
                 @if ($kitItem->inspections->isEmpty())
                     <p class="px-6 py-4 text-sm text-gray-500">No inspections recorded yet.</p>
                 @else
-                    <div class="overflow-x-auto">
+                    <div class="space-y-3 p-4 sm:hidden">
+                        @foreach ($kitItem->inspections as $inspection)
+                            @php
+                                $badge = match($inspection->overall_status) {
+                                    'pass' => 'bg-green-100 text-green-800',
+                                    'conditional' => 'bg-yellow-100 text-yellow-800',
+                                    'fail' => 'bg-red-100 text-red-800',
+                                    default => 'bg-gray-100 text-gray-600',
+                                };
+                                $label = match($inspection->overall_status) {
+                                    'pass' => 'Pass',
+                                    'conditional' => 'Conditional',
+                                    'fail' => 'Fail',
+                                    default => ucfirst($inspection->overall_status),
+                                };
+                            @endphp
+                            <div class="mobile-list-card">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-base font-semibold text-slate-900">{{ $inspection->inspection_date->format('d M Y') }}</p>
+                                        <p class="mt-1 text-sm text-slate-600">{{ $inspection->inspector->name }}</p>
+                                    </div>
+                                    <span class="mobile-chip {{ $badge }}">{{ $label }}</span>
+                                </div>
+                                <div class="mt-4 mobile-meta-grid">
+                                    <div class="mobile-meta-item">
+                                        <p class="mobile-meta-label">Next Due</p>
+                                        <p class="mobile-meta-value">{{ $inspection->next_due_date->format('d M Y') }}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 mobile-action-group">
+                                    <a href="{{ route('clients.kit-items.inspections.show', [$client, $kitItem, $inspection]) }}" class="mobile-action-link">View Inspection</a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>

@@ -1,3 +1,88 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    .mobile-shell {
+        @apply px-4 py-6 sm:px-6 lg:px-8;
+    }
+
+    .mobile-stack {
+        @apply space-y-4 sm:space-y-6;
+    }
+
+    .mobile-card {
+        @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    .mobile-card-body {
+        @apply p-4 sm:p-6;
+    }
+
+    .mobile-section-title {
+        @apply text-lg font-semibold text-slate-900;
+    }
+
+    .mobile-kicker {
+        @apply text-xs font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .mobile-action-group {
+        @apply flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center;
+    }
+
+    .mobile-action-link {
+        @apply inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:w-auto;
+    }
+
+    .mobile-stat-card {
+        @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+    }
+
+    .mobile-list-card {
+        @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+    }
+
+    .mobile-meta-grid {
+        @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+    }
+
+    .mobile-meta-item {
+        @apply rounded-xl bg-slate-50 px-3 py-3;
+    }
+
+    .mobile-meta-label {
+        @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .mobile-meta-value {
+        @apply mt-1 break-words text-sm font-medium text-slate-900;
+    }
+
+    .mobile-chip {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+    }
+
+    .mobile-disclosure {
+        @apply overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    .mobile-disclosure-button {
+        @apply flex w-full items-center justify-between gap-3 px-4 py-4 text-left;
+    }
+
+    .mobile-bottom-safe {
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+    }
+}

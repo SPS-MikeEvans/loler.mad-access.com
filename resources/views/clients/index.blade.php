@@ -5,8 +5,8 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-6 sm:py-12">
+        <div class="max-w-7xl mx-auto mobile-shell">
 
             @if (session('success'))
                 <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded-lg">
@@ -14,19 +14,58 @@
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-6">
+            <div class="mobile-card overflow-hidden sm:rounded-lg">
+                <div class="mobile-card-body">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
                         <h3 class="text-lg font-medium text-gray-900">All Clients</h3>
-                        <a href="{{ route('clients.create') }}">
-                            <x-primary-button>Add Client</x-primary-button>
+                        <a href="{{ route('clients.create') }}" class="w-full sm:w-auto">
+                            <x-primary-button class="w-full justify-center sm:w-auto">Add Client</x-primary-button>
                         </a>
                     </div>
 
                     @if ($clients->isEmpty())
                         <p class="text-gray-500">No clients yet. Add your first one above.</p>
                     @else
-                        <div class="overflow-x-auto">
+                        <div class="space-y-3 sm:hidden">
+                            @foreach ($clients as $client)
+                                <div class="mobile-list-card">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <a href="{{ route('clients.show', $client) }}" class="block text-base font-semibold text-slate-900 hover:text-brand-red">{{ $client->name }}</a>
+                                            <p class="mt-1 text-sm text-slate-600">{{ $client->contact_name ?? 'No contact name set' }}</p>
+                                        </div>
+                                        <a href="{{ route('clients.kit-items.index', $client) }}" class="mobile-chip bg-brand-blue/20 text-brand-navy shrink-0">Kit List</a>
+                                    </div>
+
+                                    <div class="mt-4 mobile-meta-grid">
+                                        <div class="mobile-meta-item">
+                                            <p class="mobile-meta-label">Phone</p>
+                                            <p class="mobile-meta-value">{{ $client->phone ?: 'Not provided' }}</p>
+                                        </div>
+                                        <div class="mobile-meta-item">
+                                            <p class="mobile-meta-label">Email</p>
+                                            <p class="mobile-meta-value">{{ $client->contact_email ?: 'Not provided' }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 mobile-action-group">
+                                        <a href="{{ route('clients.show', $client) }}" class="mobile-action-link">Open Client</a>
+                                        <a href="{{ route('clients.edit', $client) }}" class="mobile-action-link">Edit</a>
+                                        <form action="{{ route('clients.destroy', $client) }}" method="POST" class="w-full sm:w-auto">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="mobile-action-link border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 w-full"
+                                                onclick="return confirm('Delete {{ addslashes($client->name) }}?')">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="hidden sm:block overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>

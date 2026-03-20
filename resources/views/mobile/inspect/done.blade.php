@@ -1,5 +1,5 @@
 <x-mobile-layout title="Inspection Complete">
-    <div class="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <div class="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-8 text-center">
 
         {{-- Result icon --}}
         @if($inspection->overall_status === 'pass')
@@ -21,7 +21,7 @@
         @endif
 
         {{-- Summary --}}
-        <div class="mt-6 bg-white rounded-xl border border-gray-100 shadow-sm p-5 w-full text-left">
+        <div class="mt-6 w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-sm p-5 text-left">
             <p class="text-sm text-gray-500">{{ $inspection->kitItem->kitType->name }}</p>
             <p class="font-semibold text-gray-900">{{ $inspection->kitItem->asset_tag ?? $inspection->kitItem->serial_no ?? 'No tag' }}</p>
             <p class="text-sm text-gray-500 mt-0.5">{{ $inspection->kitItem->client->name }}</p>
@@ -47,16 +47,16 @@
         </div>
 
         {{-- Actions --}}
-        <div class="mt-6 w-full space-y-3">
+        <div class="mt-6 w-full max-w-md space-y-3">
             @if($inspection->pdf_path)
                 <a href="{{ route('inspections.pdf', $inspection) }}"
-                   class="block w-full py-3.5 rounded-xl bg-brand-navy text-white font-semibold text-sm">
+                   class="block w-full py-3.5 rounded-2xl bg-brand-navy text-white font-semibold text-sm">
                     Download PDF Report
                 </a>
             @endif
 
             <a href="{{ route('dashboard') }}"
-               class="block w-full py-3.5 rounded-xl bg-gray-100 text-gray-700 font-semibold text-sm">
+               class="block w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm">
                 Back to Dashboard
             </a>
         </div>
