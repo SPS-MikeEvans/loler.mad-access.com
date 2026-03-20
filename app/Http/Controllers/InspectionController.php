@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\Inspection;
 use App\Models\InspectionCheck;
+use App\Models\InspectionCheckPhoto;
 use App\Models\KitItem;
 use App\Support\DefaultChecklist;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -30,8 +31,12 @@ class InspectionController extends Controller
         return view('inspections.index', compact('client', 'kitItem', 'inspections'));
     }
 
-    public function create(Client $client, KitItem $kitItem): View
+    public function create(Client $client, KitItem $kitItem): View|RedirectResponse
     {
+        if ($this->isMobileRequest()) {
+            return redirect()->route('mobile.inspect.start', $kitItem);
+        }
+
         $kitItem->load('kitType');
 
         $checklist = $kitItem->kitType->checklist_json;
@@ -48,12 +53,12 @@ class InspectionController extends Controller
         $uploadTokens = [];
         foreach ($checklist as $i => $check) {
             $token = Str::uuid()->toString();
-            Cache::put('phone_photo:' . $token, [
+            Cache::put('phone_photo:'.$token, [
                 'check_index' => $i,
                 'kit_item_id' => $kitItem->id,
-                'user_id'     => auth()->id(),
-                'check_text'  => $check['text'],
-                'photos'      => [],
+                'user_id' => auth()->id(),
+                'check_text' => $check['text'],
+                'photos' => [],
             ], now()->addHours(2));
             $uploadTokens[$i] = $token;
         }
@@ -71,14 +76,14 @@ class InspectionController extends Controller
         }
 
         $inspection = Inspection::create([
-            'kit_item_id'       => $kitItem->id,
+            'kit_item_id' => $kitItem->id,
             'inspector_user_id' => auth()->id(),
-            'inspection_date'   => $data['inspection_date'],
-            'next_due_date'     => $data['next_due_date'],
-            'overall_status'    => $data['overall_status'],
-            'report_notes'      => $data['report_notes'] ?? null,
-            'digital_sig_path'  => $sigPath,
-            'cost'              => $kitItem->kitType->inspection_price,
+            'inspection_date' => $data['inspection_date'],
+            'next_due_date' => $data['next_due_date'],
+            'overall_status' => $data['overall_status'],
+            'report_notes' => $data['report_notes'] ?? null,
+            'digital_sig_path' => $sigPath,
+            'cost' => $kitItem->kitType->inspection_price,
         ]);
 
         $tag = $kitItem->asset_tag ?? $kitItem->serial_no ?? 'no tag';
@@ -91,35 +96,35 @@ class InspectionController extends Controller
 
         foreach ($data['checks'] as $i => $check) {
             $inspectionCheck = InspectionCheck::create([
-                'inspection_id'  => $inspection->id,
+                'inspection_id' => $inspection->id,
                 'check_category' => $check['check_category'],
-                'check_text'     => $check['check_text'],
-                'status'         => $check['status'],
-                'notes'          => $check['notes'] ?? null,
+                'check_text' => $check['check_text'],
+                'status' => $check['status'],
+                'notes' => $check['notes'] ?? null,
             ]);
 
             if ($request->hasFile("checks.{$i}.photo")) {
                 $file = $request->file("checks.{$i}.photo");
-                $ext  = $file->getClientOriginalExtension() ?: 'jpg';
-                $path = 'inspection-photos/' . Str::uuid() . '.' . $ext;
+                $ext = $file->getClientOriginalExtension() ?: 'jpg';
+                $path = 'inspection-photos/'.Str::uuid().'.'.$ext;
                 Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
 
-                \App\Models\InspectionCheckPhoto::create([
+                InspectionCheckPhoto::create([
                     'inspection_check_id' => $inspectionCheck->id,
-                    'path'                => $path,
+                    'path' => $path,
                 ]);
             }
 
             $token = $check['upload_token'] ?? null;
             if ($token) {
-                $cached = Cache::get('phone_photo:' . $token);
+                $cached = Cache::get('phone_photo:'.$token);
                 foreach (($cached['photos'] ?? []) as $photoPath) {
-                    \App\Models\InspectionCheckPhoto::create([
+                    InspectionCheckPhoto::create([
                         'inspection_check_id' => $inspectionCheck->id,
-                        'path'                => $photoPath,
+                        'path' => $photoPath,
                     ]);
                 }
-                Cache::forget('phone_photo:' . $token);
+                Cache::forget('phone_photo:'.$token);
             }
         }
 
@@ -157,7 +162,7 @@ class InspectionController extends Controller
             'updated',
             'Inspection',
             $inspection->id,
-            'Updated cost to £' . number_format((float) ($data['cost'] ?? 0), 2) . " on inspection #{$inspection->id}"
+            'Updated cost to £'.number_format((float) ($data['cost'] ?? 0), 2)." on inspection #{$inspection->id}"
         );
 
         $kitItem = $inspection->kitItem()->with('client')->first();
@@ -171,11 +176,11 @@ class InspectionController extends Controller
         $inspection->load(['kitItem.kitType', 'kitItem.client', 'inspector', 'checks.photos']);
 
         $data = [
-            'inspection'   => $inspection,
+            'inspection' => $inspection,
             'company_name' => config('app.name', 'Your LOLER Inspection Service Ltd'),
-            'report_date'  => now()->format('d F Y'),
-            'report_no'    => str_pad((string) $inspection->id, 6, '0', STR_PAD_LEFT),
-            'verdict'      => $inspection->overall_status === 'pass'
+            'report_date' => now()->format('d F Y'),
+            'report_no' => str_pad((string) $inspection->id, 6, '0', STR_PAD_LEFT),
+            'verdict' => $inspection->overall_status === 'pass'
                 ? 'SAFE FOR CONTINUED USE'
                 : 'NOT SAFE FOR USE – DEFECTS IDENTIFIED',
         ];
@@ -187,6 +192,13 @@ class InspectionController extends Controller
         $date = $inspection->inspection_date->format('Y-m-d');
 
         return $pdf->download("loler-thorough-exam-{$tag}-{$date}.pdf");
+    }
+
+    private function isMobileRequest(): bool
+    {
+        $ua = request()->userAgent() ?? '';
+
+        return (bool) preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
     }
 
     private function defaultChecklist(): array
