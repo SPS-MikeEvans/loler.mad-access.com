@@ -1,0 +1,560 @@
+================================================================================
+ LOLER KIT — INSTALLATION GUIDE
+ Hosting: 123Reg Deluxe (cPanel)
+ Subdomain: loler.mad-access.com
+ Repository: https://github.com/SPS-MikeEvans/loler.mad-access.com
+================================================================================
+
+OVERVIEW
+--------
+This Laravel 12 application requires:
+  - PHP 8.2 or higher (8.3/8.4 recommended)
+  - MySQL 8.0+
+  - Composer 2
+  - SSH access (included on 123Reg Deluxe)
+  - mod_rewrite enabled (standard on cPanel hosts)
+
+The application files live ABOVE the public web root for security.
+Only the contents of the "public/" folder are exposed to the web.
+
+The application uses:
+  - MySQL database (for data, sessions, cache, and queues)
+  - Local file storage (for inspection photos, signatures, PDFs)
+  - Laravel Scheduler (for maintenance tasks — requires a cron job)
+
+
+================================================================================
+PART 1 — cPANEL SETUP (Do these steps via the 123Reg control panel)
+================================================================================
+
+STEP 1: ENABLE SSH ACCESS
+--------------------------
+1. Log in to your 123Reg control panel
+2. Go to cPanel → Security → SSH/Shell Access
+3. Enable SSH access and generate/download an SSH key pair
+4. Note your SSH connection details:
+   - Host: usually your domain or a dedicated SSH host shown in cPanel
+   - Port: typically 22
+   - Username: your cPanel username
+
+Connect to your server:
+  ssh yourusername@yourhostname -p 22
+
+
+STEP 2: SET PHP VERSION
+-----------------------
+1. In cPanel, find "MultiPHP Manager" (or "Select PHP Version")
+2. Select PHP 8.3 or 8.4 for your account / the loler.mad-access.com subdomain
+3. Save the change
+
+Note: If you only see PHP 7.x or 8.0/8.1, contact 123Reg support and request
+PHP 8.3. Laravel 12 requires PHP 8.2 as a minimum.
+
+
+STEP 3: ENABLE REQUIRED PHP EXTENSIONS
+---------------------------------------
+1. In cPanel, find "MultiPHP INI Editor" or "PHP Extensions"
+2. Ensure the following extensions are enabled (most will be on by default):
+
+   REQUIRED:
+   - bcmath        (financial calculations in DomPDF)
+   - ctype         (Laravel core)
+   - curl          (HTTP requests)
+   - dom           (PDF generation, QR code SVG)
+   - fileinfo      (file upload handling)
+   - gd            (image processing — inspection photos)
+   - json          (API responses)
+   - mbstring      (multi-byte string handling)
+   - mysqli        (MySQL connectivity)
+   - openssl       (encryption, HTTPS)
+   - pdo           (database abstraction)
+   - pdo_mysql     (MySQL via PDO — must be enabled)
+   - pcre          (regular expressions)
+   - tokenizer     (Laravel core)
+   - xml           (QR code SVG generation)
+   - zip           (Composer, package handling)
+
+   RECOMMENDED:
+   - exif          (image metadata reading)
+   - intl          (internationalisation)
+
+3. If "gd" is not listed, look for "imagick" as an alternative.
+   At least one of gd or imagick is required for photo processing.
+
+
+STEP 4: CREATE THE MYSQL DATABASE
+-----------------------------------
+1. In cPanel, go to "MySQL Databases"
+
+2. Create a new database:
+   Database Name: lolerkit   (cPanel will prefix it: yourusername_lolerkit)
+   Write down the full name shown: e.g. spsmike_lolerkit
+
+3. Create a database user:
+   Username: loleruser   (cPanel will prefix it: yourusername_loleruser)
+   Password: [generate a strong password and save it securely]
+
+4. Add the user to the database:
+   - Select your user and database
+   - Grant: ALL PRIVILEGES
+   - Click "Make Changes"
+
+5. Write down these three values — you will need them later:
+   DB_DATABASE=yourusername_lolerkit
+   DB_USERNAME=yourusername_loleruser
+   DB_PASSWORD=[the password you set]
+
+
+STEP 5: CREATE THE SUBDOMAIN WITH CORRECT DOCUMENT ROOT
+---------------------------------------------------------
+This is the most important step. Laravel's web root is the "public/" subfolder,
+NOT the project root. You must point the subdomain directly at "public/".
+
+1. In cPanel, go to "Subdomains" (or "Domains" → "Create a New Domain")
+
+2. Fill in:
+   Subdomain: loler
+   Domain: mad-access.com
+   Document Root: CHANGE this from the default to:
+     /home/yourusername/loler-app/public
+
+   (Replace "yourusername" with your actual cPanel username)
+   (We will clone the project to /home/yourusername/loler-app/ in Part 2)
+
+3. Click Create / Add Domain
+
+Note: The document root must end in "/public" — this is what makes Laravel
+route requests through index.php correctly.
+
+
+STEP 6: INSTALL AN SSL CERTIFICATE
+------------------------------------
+1. In cPanel, go to "SSL/TLS" → "Let's Encrypt SSL" (or "AutoSSL")
+2. Issue a free SSL certificate for loler.mad-access.com
+3. This may take a few minutes to propagate
+
+The application will only work properly over HTTPS. If AutoSSL is not
+available on your plan, contact 123Reg support and request a free Let's
+Encrypt certificate for the subdomain.
+
+
+================================================================================
+PART 2 — SERVER SETUP VIA SSH
+================================================================================
+
+Connect via SSH before running any of the following commands:
+  ssh yourusername@yourhostname
+
+All commands assume you are in your home directory (/home/yourusername).
+
+
+STEP 7: CHECK PHP AND COMPOSER
+--------------------------------
+Verify PHP is at the correct version:
+  php -v
+
+If it shows an old version, find the correct PHP binary. On cPanel hosts it
+is often at a path like:
+  /opt/cpanel/ea-php83/root/usr/bin/php
+
+You can create an alias or use the full path for all commands below.
+If needed, add to your ~/.bashrc:
+  alias php='/opt/cpanel/ea-php83/root/usr/bin/php'
+  source ~/.bashrc
+
+Check if Composer is available:
+  composer --version
+
+If Composer is not found, install it locally:
+  curl -sS https://getcomposer.org/installer | php
+  mv composer.phar /home/yourusername/bin/composer
+  mkdir -p ~/bin
+
+Then use "php ~/bin/composer" instead of "composer" in all commands below,
+or add ~/bin to your PATH:
+  echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+  source ~/.bashrc
+
+
+STEP 8: CLONE THE REPOSITORY
+------------------------------
+Clone the project into the loler-app directory in your home folder.
+This location is ABOVE the web root, keeping your application code secure.
+
+  cd /home/yourusername
+  git clone https://github.com/SPS-MikeEvans/loler.mad-access.com loler-app
+  cd loler-app
+
+Verify the clone worked:
+  ls -la
+  (You should see: app/, public/, resources/, database/, etc.)
+
+
+STEP 9: INSTALL PHP DEPENDENCIES
+----------------------------------
+Install production dependencies (no dev tools):
+  composer install --no-dev --optimize-autoloader --no-interaction
+
+This will download all required packages including:
+  - Laravel Framework 12
+  - DomPDF (PDF generation)
+  - Intervention Image (photo resizing)
+  - Simple QR Code (QR code generation)
+
+If Composer reports missing PHP extensions, go back to Step 3 and enable them,
+then re-run this command.
+
+
+STEP 10: CREATE AND CONFIGURE THE .env FILE
+---------------------------------------------
+Copy the example environment file:
+  cp .env.example .env
+
+Open it for editing:
+  nano .env
+
+Update the following values (change ONLY these lines, leave others as-is):
+
+  APP_NAME="LOLER Kit"
+  APP_ENV=production
+  APP_KEY=                          ← leave blank for now, Step 11 fills this
+  APP_DEBUG=false
+  APP_URL=https://loler.mad-access.com
+
+  LOG_LEVEL=error
+
+  DB_CONNECTION=mysql
+  DB_HOST=127.0.0.1
+  DB_PORT=3306
+  DB_DATABASE=yourusername_lolerkit        ← from Step 4
+  DB_USERNAME=yourusername_loleruser       ← from Step 4
+  DB_PASSWORD=yourpassword                 ← from Step 4
+
+  SESSION_DRIVER=database
+  SESSION_LIFETIME=120
+
+  CACHE_STORE=database
+
+  QUEUE_CONNECTION=database
+
+  FILESYSTEM_DISK=local
+
+  MAIL_MAILER=smtp
+  MAIL_HOST=mail.mad-access.com       ← or your 123Reg outgoing mail server
+  MAIL_PORT=587
+  MAIL_USERNAME=noreply@mad-access.com
+  MAIL_PASSWORD=yourmailpassword
+  MAIL_FROM_ADDRESS="noreply@mad-access.com"
+  MAIL_FROM_NAME="LOLER Kit"
+
+Save the file: Ctrl+X, then Y, then Enter.
+
+Note: If you do not need email functionality yet, you can leave MAIL_MAILER=log
+for now, which will log emails to storage/logs instead of sending them.
+
+
+STEP 11: GENERATE THE APPLICATION KEY
+---------------------------------------
+This generates the APP_KEY value in .env (used for encryption):
+
+  php artisan key:generate --no-interaction
+
+Verify it worked — the APP_KEY line in .env should now contain a base64 string:
+  grep APP_KEY .env
+
+
+STEP 12: RUN DATABASE MIGRATIONS
+----------------------------------
+This creates all the required database tables:
+
+  php artisan migrate --no-interaction --force
+
+Expected output: a list of migrations all showing "DONE".
+
+If you see connection errors, double-check your DB_HOST, DB_DATABASE,
+DB_USERNAME, and DB_PASSWORD values in .env from Step 10.
+
+Note: On some shared hosts DB_HOST may not be 127.0.0.1. Check your cPanel
+MySQL settings — it may be "localhost" or a specific hostname shown there.
+
+
+STEP 13: SEED THE DATABASE (CREATE ADMIN USER)
+------------------------------------------------
+Create the initial admin user account:
+
+  php artisan db:seed --no-interaction --force
+
+This will create default data including:
+  - An admin user account (check the DatabaseSeeder for default credentials
+    or update the seeder first if you want custom credentials)
+
+To view or change the seeder before running it:
+  nano database/seeders/DatabaseSeeder.php
+
+
+STEP 14: CREATE THE STORAGE SYMLINK
+-------------------------------------
+This creates a link so inspection photos and uploaded files are publicly
+accessible:
+
+  php artisan storage:link --no-interaction
+
+This creates: public/storage → storage/app/public
+
+Verify it worked:
+  ls -la public/storage
+  (Should show: public/storage -> /home/yourusername/loler-app/storage/app/public)
+
+If the symlink fails due to shared hosting restrictions, create it manually:
+  ln -s /home/yourusername/loler-app/storage/app/public public/storage
+
+
+STEP 15: SET FILE PERMISSIONS
+-------------------------------
+Set correct permissions so the web server can write to required directories:
+
+  chmod -R 755 /home/yourusername/loler-app
+  chmod -R 775 /home/yourusername/loler-app/storage
+  chmod -R 775 /home/yourusername/loler-app/bootstrap/cache
+
+The storage directory must be writable by the web server for:
+  - Inspection photo uploads
+  - Signature file storage
+  - PDF generation
+  - Log files
+  - Session and cache data
+
+
+STEP 16: OPTIMISE FOR PRODUCTION
+----------------------------------
+Cache configuration, routes, and views for faster performance:
+
+  php artisan config:cache --no-interaction
+  php artisan route:cache --no-interaction
+  php artisan view:cache --no-interaction
+  php artisan event:cache --no-interaction
+
+Note: Every time you deploy changes, you must re-run these commands.
+Run "php artisan optimize:clear" first if you need to clear old caches.
+
+
+STEP 17: VERIFY THE SITE LOADS
+--------------------------------
+Open a browser and navigate to: https://loler.mad-access.com
+
+You should see the LOLER Kit login page. If you see:
+  - A blank page: check storage permissions (Step 15)
+  - "500 Server Error": check storage/logs/laravel.log for details
+  - "404 Not Found": check the subdomain document root points to public/ (Step 5)
+  - "Database connection refused": check .env DB settings (Step 10)
+
+To view error logs:
+  tail -50 /home/yourusername/loler-app/storage/logs/laravel.log
+
+
+================================================================================
+PART 3 — cPANEL CRON JOB SETUP
+================================================================================
+
+STEP 18: SET UP THE LARAVEL SCHEDULER CRON JOB
+------------------------------------------------
+The Laravel Scheduler handles automated background tasks (inspection reminders,
+clean-up tasks, etc.). It must run every minute.
+
+1. In cPanel, go to "Cron Jobs"
+
+2. Set the schedule to "Every Minute" (or enter manually):
+   Minute:  *
+   Hour:    *
+   Day:     *
+   Month:   *
+   Weekday: *
+
+3. Set the command to:
+   /usr/local/bin/php /home/yourusername/loler-app/artisan schedule:run >> /dev/null 2>&1
+
+   If the php path is different on your host, use:
+   $(which php) /home/yourusername/loler-app/artisan schedule:run >> /dev/null 2>&1
+
+4. Save the cron job.
+
+Note: If you are unsure of the PHP path, run this via SSH:
+  which php
+
+
+================================================================================
+PART 4 — GIT DEPLOYMENT WORKFLOW (FUTURE UPDATES)
+================================================================================
+
+After the initial setup, deploying updates from GitHub follows this process:
+
+SSH into your server, then:
+
+  cd /home/yourusername/loler-app
+
+  # Pull latest changes
+  git pull origin main
+
+  # Install any new dependencies
+  composer install --no-dev --optimize-autoloader --no-interaction
+
+  # Run any new migrations
+  php artisan migrate --no-interaction --force
+
+  # Clear and rebuild caches
+  php artisan optimize:clear
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
+  php artisan event:cache
+
+  # Fix permissions if needed
+  chmod -R 775 storage bootstrap/cache
+
+The site will be live immediately — there is no restart required on shared hosting.
+
+TIP: You can save these commands in a deploy.sh script in your home directory:
+
+  nano ~/deploy.sh
+
+  Paste:
+  #!/bin/bash
+  cd /home/yourusername/loler-app
+  git pull origin main
+  composer install --no-dev --optimize-autoloader --no-interaction
+  php artisan migrate --no-interaction --force
+  php artisan optimize:clear
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
+  php artisan event:cache
+  chmod -R 775 storage bootstrap/cache
+  echo "Deployment complete."
+
+  Then make it executable:
+  chmod +x ~/deploy.sh
+
+  Deploy in future with a single command:
+  ~/deploy.sh
+
+
+================================================================================
+PART 5 — PHONE-AS-CAMERA FEATURE ADDITIONAL NOTE
+================================================================================
+
+The application includes a phone-as-camera QR upload feature for desktop
+inspections. When inspectors scan a QR code from the desktop form, the URL
+must be reachable by their phone.
+
+This works automatically in production since loler.mad-access.com is a real
+public URL accessible from any device on any network.
+
+The QR code URLs will be in the format:
+  https://loler.mad-access.com/photo-capture/{token}
+
+These links expire after 2 hours and do not require the phone user to be
+logged in — the token itself authenticates the request.
+
+
+================================================================================
+PART 6 — TROUBLESHOOTING
+================================================================================
+
+PROBLEM: 500 Internal Server Error
+SOLUTION:
+  - Check storage/logs/laravel.log:
+      tail -100 storage/logs/laravel.log
+  - Check APP_DEBUG=false is set in .env (production)
+  - Verify storage/ is writable: chmod -R 775 storage bootstrap/cache
+
+PROBLEM: "The stream or file .../laravel.log could not be opened"
+SOLUTION:
+  chmod -R 775 storage bootstrap/cache
+
+PROBLEM: Database connection refused
+SOLUTION:
+  - Verify DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD in .env
+  - On 123Reg, DB_HOST may need to be "localhost" instead of "127.0.0.1"
+  - Check the user has ALL PRIVILEGES on the database (Step 4)
+
+PROBLEM: "No application encryption key has been specified"
+SOLUTION:
+  php artisan key:generate --no-interaction
+
+PROBLEM: Uploaded photos not showing / 404 on storage URLs
+SOLUTION:
+  - Verify storage symlink: ls -la public/storage
+  - Re-run: php artisan storage:link
+  - Check FILESYSTEM_DISK=local in .env
+
+PROBLEM: CSS/JS not loading (unstyled page)
+SOLUTION:
+  - Ensure you pushed compiled assets to GitHub:
+      git add public/build
+      git commit -m "Add compiled assets"
+      git push
+  - The public/build directory must be committed and deployed.
+    Unlike local development, the server does not run "npm run build".
+
+PROBLEM: QR code / PDF generation fails
+SOLUTION:
+  - Ensure the "dom" and "xml" PHP extensions are enabled (Step 3)
+  - Ensure the "gd" PHP extension is enabled (Step 3)
+  - Check storage/logs/laravel.log for specific error details
+
+PROBLEM: Inspection photos not uploading
+SOLUTION:
+  - Check PHP upload limits in cPanel PHP INI Editor:
+      upload_max_filesize = 10M
+      post_max_size = 12M
+  - Ensure storage/app/public/inspection-photos/ directory exists:
+      mkdir -p storage/app/public/inspection-photos
+      chmod -R 775 storage
+
+PROBLEM: Site loads but redirects loop or login fails
+SOLUTION:
+  - Ensure APP_URL=https://loler.mad-access.com in .env
+  - Add to .env if behind a proxy/load balancer:
+      TRUSTED_PROXIES=*
+
+
+================================================================================
+IMPORTANT: COMPILED FRONTEND ASSETS
+================================================================================
+
+This project uses Vite to compile CSS and JavaScript. The compiled files in
+public/build/ must be committed to Git and deployed to the server.
+
+On your LOCAL development machine, before pushing:
+  npm run build
+  git add public/build
+  git commit -m "Build production assets"
+  git push origin main
+
+The server does NOT have Node.js or npm, so the build step must be done
+locally before every deployment that changes CSS or JavaScript.
+
+
+================================================================================
+CHECKLIST — VERIFY EVERYTHING IS WORKING
+================================================================================
+
+  [ ] https://loler.mad-access.com loads the login page
+  [ ] SSL padlock shows in browser (green/locked)
+  [ ] Admin user can log in
+  [ ] Can create a client
+  [ ] Can create a kit type with checklist
+  [ ] Can create a kit item
+  [ ] Can start and save a desktop inspection
+  [ ] Photos can be uploaded on the desktop inspection form
+  [ ] QR "Scan to Upload" button shows a QR code in the modal
+  [ ] Scanning the QR code on a phone opens the camera upload page
+  [ ] Photo taken on phone appears in the desktop modal within ~3 seconds
+  [ ] Mobile inspection wizard is accessible via the kit item page
+  [ ] PDF report downloads correctly with photos included
+  [ ] Cron job is running (check: php artisan schedule:list)
+
+
+================================================================================
+END OF INSTALLATION GUIDE
+================================================================================
