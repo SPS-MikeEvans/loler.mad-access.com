@@ -53,6 +53,7 @@
 
                 <div class="px-4 py-4 bg-gray-50 sm:px-6">
                     <div class="mobile-action-group">
+                    <a href="{{ route('clients.kit-items.index', $client) }}" class="mobile-action-link">View Kit List</a>
                     <a href="{{ route('clients.edit', $client) }}" class="w-full sm:w-auto">
                         <x-primary-button class="w-full justify-center sm:w-auto">Edit</x-primary-button>
                     </a>

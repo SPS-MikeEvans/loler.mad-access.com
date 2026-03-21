@@ -49,41 +49,60 @@
                                         default => 'bg-gray-100 text-gray-600',
                                     };
                                 @endphp
-                                <article class="mobile-list-card overflow-hidden"
+                                <details class="mobile-list-card overflow-hidden group"
                                     x-show="search === ''
                                         || '{{ strtolower($item->kitType->name) }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
-                                    <div class="space-y-4">
-                                        <div class="flex flex-col gap-3">
+                                    <summary class="list-none cursor-pointer px-4 py-4">
+                                        <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="mobile-meta-label">Equipment Type</p>
-                                                <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="mt-1 block break-words text-base font-semibold text-slate-900 hover:text-brand-red">{{ $item->kitType->name }}</a>
+                                                <p class="mt-1 break-words text-base font-semibold text-slate-900">{{ $item->kitType->name }}</p>
                                             </div>
-                                            <div>
-                                                <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
+                                            <svg class="mt-1 h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </div>
+                                        <div class="mt-3">
+                                            <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
+                                        </div>
+                                    </summary>
+
+                                    <div class="border-t border-slate-200 px-4 pb-4 pt-4 space-y-4">
+                                        <div class="mobile-meta-grid">
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">Asset / Serial</p>
+                                                <p class="mobile-meta-value">{{ $item->asset_tag ?? $item->serial_no ?? 'No asset or serial' }}</p>
+                                            </div>
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">Next Inspection Due</p>
+                                                <p class="mobile-meta-value {{ $item->next_inspection_due?->isPast() ? 'text-red-600' : '' }}">{{ $item->next_inspection_due?->format('d M Y') ?? '—' }}</p>
+                                            </div>
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">Manufacturer</p>
+                                                <p class="mobile-meta-value">{{ $item->manufacturer ?? 'Not set' }}</p>
+                                            </div>
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">Model</p>
+                                                <p class="mobile-meta-value">{{ $item->model ?? 'Not set' }}</p>
+                                            </div>
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">Inspection Access</p>
+                                                <p class="mobile-meta-value">Desktop and mobile options available</p>
+                                            </div>
+                                            <div class="mobile-meta-item">
+                                                <p class="mobile-meta-label">SWL</p>
+                                                <p class="mobile-meta-value">{{ $item->swl_kg ? $item->swl_kg . ' kg' : 'Not set' }}</p>
                                             </div>
                                         </div>
 
-                                    <div class="mobile-meta-grid">
-                                        <div class="mobile-meta-item">
-                                            <p class="mobile-meta-label">Asset / Serial</p>
-                                            <p class="mobile-meta-value">{{ $item->asset_tag ?? $item->serial_no ?? 'No asset or serial' }}</p>
-                                        </div>
-                                        <div class="mobile-meta-item">
-                                            <p class="mobile-meta-label">Next Inspection Due</p>
-                                            <p class="mobile-meta-value {{ $item->next_inspection_due?->isPast() ? 'text-red-600' : '' }}">{{ $item->next_inspection_due?->format('d M Y') ?? '—' }}</p>
-                                        </div>
-                                        <div class="mobile-meta-item">
-                                            <p class="mobile-meta-label">Inspection Access</p>
-                                            <p class="mobile-meta-value">Desktop and mobile options available</p>
-                                        </div>
-                                    </div>
-
-                                    <details class="rounded-xl border border-slate-200 bg-slate-50">
-                                        <summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-navy">Actions</summary>
-                                        <div class="border-t border-slate-200 px-3 py-3 mobile-action-group">
+                                        <div class="mobile-action-group">
+                                            <a href="{{ route('mobile.inspect.start', $item) }}"
+                                               class="inline-flex w-full items-center justify-center rounded-xl bg-brand-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-red">
+                                                Start Mobile Inspection
+                                            </a>
                                             <a href="{{ route('clients.kit-items.inspections.create', [$client, $item]) }}" class="mobile-action-link">Inspect</a>
                                             <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="mobile-action-link">View</a>
                                             <a href="{{ route('clients.kit-items.edit', [$client, $item]) }}" class="mobile-action-link">Edit</a>
@@ -95,8 +114,8 @@
                                                 </button>
                                             </form>
                                         </div>
-                                    </details>
-                                </article>
+                                    </div>
+                                </details>
                             @endforeach
                         </div>
 
