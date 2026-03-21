@@ -18,7 +18,14 @@ class KitItemFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'asset_tag' => fake()->unique()->bothify('ASSET-####'),
+            'manufacturer' => fake()->company(),
+            'model' => fake()->word(),
+            'serial_no' => fake()->bothify('SN-######'),
+            'status' => 'in_service',
+            'flagged_for_inspection' => false,
+            'flag_notes' => null,
+            'lifting_people' => false,
         ];
     }
 }

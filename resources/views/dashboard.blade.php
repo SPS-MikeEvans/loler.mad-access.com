@@ -66,6 +66,88 @@
                     </div>
                 @endif
 
+                @if ($metrics['flagged_items']->isNotEmpty())
+                    <div class="mobile-card overflow-hidden sm:rounded-lg">
+                        <div class="mobile-card-body">
+                            <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                Items Flagged for Inspection by Clients
+                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700">{{ $metrics['flagged_items']->count() }}</span>
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Equipment</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Asset / Serial</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                                            <th class="px-4 py-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        @foreach ($metrics['flagged_items'] as $item)
+                                            <tr>
+                                                <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ $item->client->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">{{ $item->kitType->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-gray-600 max-w-xs">{{ Str::limit($item->flag_notes, 60) ?: '—' }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap {{ $item->next_inspection_due?->isPast() ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
+                                                    {{ $item->next_inspection_due?->format('d M Y') ?? '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-right">
+                                                    <a href="{{ route('clients.kit-items.show', [$item->client, $item]) }}"
+                                                       class="text-brand-navy hover:text-brand-red text-xs font-medium">View →</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($metrics['pending_items']->isNotEmpty())
+                    <div class="mobile-card overflow-hidden sm:rounded-lg">
+                        <div class="mobile-card-body">
+                            <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                Client-Submitted Equipment Pending Review
+                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">{{ $metrics['pending_items']->count() }}</span>
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Equipment</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Asset / Serial</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Submitted</th>
+                                            <th class="px-4 py-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        @foreach ($metrics['pending_items'] as $item)
+                                            <tr>
+                                                <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ $item->client->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">{{ $item->kitType->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">
+                                                    {{ $item->created_at?->format('d M Y') ?? '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-right">
+                                                    <a href="{{ route('clients.kit-items.show', [$item->client, $item]) }}"
+                                                       class="text-brand-navy hover:text-brand-red text-xs font-medium">Review →</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
             @elseif (auth()->user()->isInspector())
                 <div class="mobile-card">
                     <div class="mobile-card-body">
@@ -75,21 +157,6 @@
                             View Clients & Kit Lists →
                         </a>
                     </div>
-                </div>
-                </div>
-
-            @elseif (auth()->user()->isClientViewer())
-                @php $userClient = auth()->user()->client; @endphp
-                <div class="mobile-card">
-                    <div class="mobile-card-body">
-                    <h3 class="font-semibold text-gray-900 mb-3">Your Equipment</h3>
-                    @if ($userClient)
-                        <a href="{{ route('clients.kit-items.index', $userClient) }}" class="text-brand-navy hover:text-brand-red text-sm font-medium">
-                            View {{ $userClient->name }} kit list →
-                        </a>
-                    @else
-                        <p class="text-sm text-gray-600">No client assigned to your account. Contact an administrator.</p>
-                    @endif
                 </div>
                 </div>
 

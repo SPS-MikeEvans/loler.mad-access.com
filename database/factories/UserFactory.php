@@ -42,4 +42,12 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function clientViewer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'client_viewer',
+            'must_change_password' => false,
+        ]);
+    }
 }

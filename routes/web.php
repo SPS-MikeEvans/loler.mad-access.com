@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyLiabilityController;
 use App\Http\Controllers\DashboardController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\KitItemController;
 use App\Http\Controllers\KitTypeController;
 use App\Http\Controllers\MobileInspectionController;
 use App\Http\Controllers\PhotoCaptureController;
+use App\Http\Controllers\Portal;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
@@ -24,7 +26,7 @@ Route::get('/liabilities', [CompanyLiabilityController::class, 'showPublic'])
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function () {
     Route::resource('clients', ClientController::class);
     Route::resource('kit-types', KitTypeController::class)->except(['show']);
     Route::resource('clients.kit-items', KitItemController::class)->scoped();
@@ -103,5 +105,29 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Forced password change — available to all authenticated roles
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/password/change', [PasswordChangeController::class, 'create'])->name('password.change');
+    Route::patch('/password/change', [PasswordChangeController::class, 'update'])->name('password.change.update');
+});
+
+// Client portal
+Route::prefix('portal')
+    ->middleware(['auth', 'verified', 'role:client_viewer', 'password.changed'])
+    ->name('portal.')
+    ->group(function () {
+        Route::get('/', Portal\DashboardController::class)->name('dashboard');
+
+        Route::get('/kit', [Portal\KitItemController::class, 'index'])->name('kit.index');
+        Route::get('/kit/create', [Portal\KitItemController::class, 'create'])->name('kit.create');
+        Route::post('/kit', [Portal\KitItemController::class, 'store'])->name('kit.store');
+        Route::get('/kit/{kitItem}', [Portal\KitItemController::class, 'show'])->name('kit.show');
+        Route::patch('/kit/{kitItem}/flag', [Portal\KitItemController::class, 'flag'])->name('kit.flag');
+        Route::patch('/kit/{kitItem}/retire', [Portal\KitItemController::class, 'retire'])->name('kit.retire');
+
+        Route::get('/kit/{kitItem}/inspections', [Portal\InspectionController::class, 'index'])->name('inspections.index');
+        Route::get('/inspections/{inspection}/pdf', [Portal\InspectionController::class, 'downloadPdf'])->name('inspections.pdf');
+    });
 
 require __DIR__.'/auth.php';

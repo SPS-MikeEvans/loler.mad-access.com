@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CreateClientPortalUser;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Models\Client;
@@ -10,6 +11,8 @@ use Illuminate\View\View;
 
 class ClientController extends Controller
 {
+    public function __construct(private readonly CreateClientPortalUser $portalAction) {}
+
     public function index(): View
     {
         $clients = Client::latest('created_at')->get();
@@ -24,10 +27,11 @@ class ClientController extends Controller
 
     public function store(StoreClientRequest $request): RedirectResponse
     {
-        Client::create($request->validated());
+        $client = Client::create($request->validated());
+        $this->portalAction->execute($client);
 
-        return redirect()->route('clients.index')
-            ->with('success', 'Client created successfully.');
+        return redirect()->route('clients.show', $client)
+            ->with('success', 'Client and portal account created.');
     }
 
     public function show(Client $client): View

@@ -65,8 +65,11 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                             </svg>
                                         </div>
-                                        <div class="mt-3">
+                                        <div class="mt-3 flex flex-wrap gap-2">
                                             <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
+                                            @if ($item->flagged_for_inspection)
+                                                <span class="mobile-chip bg-orange-100 text-orange-700">Flagged</span>
+                                            @endif
                                         </div>
                                     </summary>
 
@@ -145,16 +148,23 @@
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @php
                                                     $statusColour = match($item->status) {
-                                                        'in_service' => 'bg-green-100 text-green-800',
+                                                        'in_service'     => 'bg-green-100 text-green-800',
                                                         'inspection_due' => 'bg-yellow-100 text-yellow-800',
-                                                        'quarantined' => 'bg-red-100 text-red-800',
-                                                        'retired' => 'bg-gray-100 text-gray-600',
-                                                        default => 'bg-gray-100 text-gray-600',
+                                                        'quarantined'    => 'bg-red-100 text-red-800',
+                                                        'client_pending' => 'bg-blue-100 text-blue-700',
+                                                        'retired'        => 'bg-gray-100 text-gray-600',
+                                                        default          => 'bg-gray-100 text-gray-600',
                                                     };
                                                 @endphp
-                                                <span class="px-2 py-1 text-xs rounded-full {{ $statusColour }}">
-                                                    {{ ucfirst(str_replace('_', ' ', $item->status)) }}
-                                                </span>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <span class="px-2 py-1 text-xs rounded-full {{ $statusColour }}">
+                                                        {{ ucfirst(str_replace('_', ' ', $item->status)) }}
+                                                    </span>
+                                                    @if ($item->flagged_for_inspection)
+                                                        <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-700"
+                                                              title="{{ $item->flag_notes }}">Flagged</span>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap {{ $item->next_inspection_due?->isPast() ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
                                                 {{ $item->next_inspection_due?->format('d M Y') ?? '—' }}

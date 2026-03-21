@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\KitItemFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,9 @@ class KitItem extends Model
         'lifting_people',
         'status',
         'next_inspection_due',
+        'flagged_for_inspection',
+        'flag_notes',
+        'pending_review',
     ];
 
     protected function casts(): array
@@ -40,9 +44,23 @@ class KitItem extends Model
             'next_inspection_due' => 'date',
             'lifting_people' => 'boolean',
             'swl_kg' => 'integer',
+            'flagged_for_inspection' => 'boolean',
+            'pending_review' => 'boolean',
             'created_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    /** @param Builder<KitItem> $query */
+    public function scopeFlaggedForInspection(Builder $query): void
+    {
+        $query->where('flagged_for_inspection', true);
+    }
+
+    /** @param Builder<KitItem> $query */
+    public function scopeClientPending(Builder $query): void
+    {
+        $query->where('pending_review', true);
     }
 
     /** @return BelongsTo<Client, $this> */

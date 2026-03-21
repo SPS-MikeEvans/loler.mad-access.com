@@ -23,6 +23,7 @@ class User extends Authenticatable
         'password',
         'role',
         'competent_person_flag',
+        'must_change_password',
         'qualifications',
         'qualification_expiry',
         'phone',
@@ -37,11 +38,17 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at'    => 'datetime',
-            'password'             => 'hashed',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
             'competent_person_flag' => 'boolean',
+            'must_change_password' => 'boolean',
             'qualification_expiry' => 'date',
         ];
+    }
+
+    public function mustChangePassword(): bool
+    {
+        return (bool) $this->must_change_password;
     }
 
     public function isAdmin(): bool

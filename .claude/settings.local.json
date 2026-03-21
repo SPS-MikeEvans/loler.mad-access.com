@@ -57,7 +57,12 @@
       "Bash(git rm:*)",
       "Bash(vendor/bin/pint database/seeders/DatabaseSeeder.php --dirty)",
       "Bash(git push:*)",
-      "Bash(vendor/bin/pint app/Http/Controllers/PhotoCaptureController.php routes/web.php --dirty)"
+      "Bash(vendor/bin/pint app/Http/Controllers/PhotoCaptureController.php routes/web.php --dirty)",
+      "mcp__laravel-boost__list-routes",
+      "mcp__laravel-boost__database-schema",
+      "Bash(find /home/mike/Documents/VSCode/loler-kit/app/Mail -type f -name *.php)",
+      "Bash(find /home/mike/Documents/VSCode/loler-kit/app/Notifications -type f -name *.php)",
+      "Bash(find /home/mike/Documents/VSCode/loler-kit/resources/views/emails -type f -name *.blade.php)"
     ]
   }
 }

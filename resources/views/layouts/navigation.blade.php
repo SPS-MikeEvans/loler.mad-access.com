@@ -12,26 +12,35 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.*')">
-                        {{ __('Clients') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('kit-types.index')" :active="request()->routeIs('kit-types.*')">
-                        {{ __('Kit Types') }}
-                    </x-nav-link>
-                    @if(auth()->user()->isAdmin())
-                        <x-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
-                            {{ __('Liabilities') }}
+                    @unless(auth()->user()->isClientViewer())
+                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                            {{ __('Users') }}
+                        <x-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.*')">
+                            {{ __('Clients') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('audit-log.index')" :active="request()->routeIs('audit-log.*')">
-                            {{ __('Audit Log') }}
+                        <x-nav-link :href="route('kit-types.index')" :active="request()->routeIs('kit-types.*')">
+                            {{ __('Kit Types') }}
                         </x-nav-link>
-                    @endif
+                        @if(auth()->user()->isAdmin())
+                            <x-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
+                                {{ __('Liabilities') }}
+                            </x-nav-link>
+                            <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                                {{ __('Users') }}
+                            </x-nav-link>
+                            <x-nav-link :href="route('audit-log.index')" :active="request()->routeIs('audit-log.*')">
+                                {{ __('Audit Log') }}
+                            </x-nav-link>
+                        @endif
+                    @else
+                        <x-nav-link :href="route('portal.dashboard')" :active="request()->routeIs('portal.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('portal.kit.index')" :active="request()->routeIs('portal.kit.*')">
+                            {{ __('My Equipment') }}
+                        </x-nav-link>
+                    @endunless
                 </div>
             </div>
 
@@ -93,26 +102,35 @@
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Navigate</p>
         </div>
         <div class="px-3 pb-4 space-y-2">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.*')">
-                {{ __('Clients') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('kit-types.index')" :active="request()->routeIs('kit-types.*')">
-                {{ __('Kit Types') }}
-            </x-responsive-nav-link>
-            @if(auth()->user()->isAdmin())
-                <x-responsive-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
-                    {{ __('Liabilities') }}
+            @unless(auth()->user()->isClientViewer())
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                    {{ __('Users') }}
+                <x-responsive-nav-link :href="route('clients.index')" :active="request()->routeIs('clients.*')">
+                    {{ __('Clients') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('audit-log.index')" :active="request()->routeIs('audit-log.*')">
-                    {{ __('Audit Log') }}
+                <x-responsive-nav-link :href="route('kit-types.index')" :active="request()->routeIs('kit-types.*')">
+                    {{ __('Kit Types') }}
                 </x-responsive-nav-link>
-            @endif
+                @if(auth()->user()->isAdmin())
+                    <x-responsive-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
+                        {{ __('Liabilities') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                        {{ __('Users') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('audit-log.index')" :active="request()->routeIs('audit-log.*')">
+                        {{ __('Audit Log') }}
+                    </x-responsive-nav-link>
+                @endif
+            @else
+                <x-responsive-nav-link :href="route('portal.dashboard')" :active="request()->routeIs('portal.dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('portal.kit.index')" :active="request()->routeIs('portal.kit.*')">
+                    {{ __('My Equipment') }}
+                </x-responsive-nav-link>
+            @endunless
         </div>
 
         <!-- Responsive Settings Options -->
