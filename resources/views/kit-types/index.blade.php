@@ -20,26 +20,44 @@
                 </div>
             @endif
 
-            @php $lastRefresh = \Illuminate\Support\Facades\Cache::get('kit_types.refresh_total'); @endphp
+            @php
+                $lastRefresh = \Illuminate\Support\Facades\Cache::get('kit_types.refresh_total');
+                $refreshDone = $lastRefresh['done'] ?? 0;
+                $refreshTotal = $lastRefresh['dispatched'] ?? 14;
+                $refreshInProgress = $lastRefresh && $refreshDone < $refreshTotal;
+                $refreshPct = $refreshTotal > 0 ? round(($refreshDone / $refreshTotal) * 100) : 100;
+            @endphp
             @if ($lastRefresh)
-                <div class="mb-4 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg text-sm"
+                <div class="mb-4 px-4 py-4 bg-blue-50 border border-blue-100 rounded-lg text-sm"
                      x-data="{ poll: true }"
-                     x-init="if ({{ $lastRefresh['done'] ?? 0 }} < {{ $lastRefresh['dispatched'] ?? 14 }}) {
+                     x-init="if ({{ $refreshInProgress ? 'true' : 'false' }}) {
                          let t = setInterval(() => { if (poll) location.reload() }, 10000);
                          setTimeout(() => { clearInterval(t); poll = false }, 300000);
                      }">
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-blue-800">
-                        @if (($lastRefresh['done'] ?? 0) < ($lastRefresh['dispatched'] ?? 14))
-                            <span class="font-medium">Refreshing… ({{ $lastRefresh['done'] ?? 0 }}/{{ $lastRefresh['dispatched'] ?? 14 }} brands done)</span>
-                        @else
-                            <span>Last AI refresh: {{ \Carbon\Carbon::parse($lastRefresh['ran_at'])->format('d M Y H:i') }}</span>
-                            <span class="text-green-700 font-medium">{{ $lastRefresh['added'] }} new types added</span>
-                            <span>{{ $lastRefresh['skipped'] }} already existed</span>
-                        @endif
+                    @if ($refreshInProgress)
+                        <div class="flex items-center justify-between mb-2 text-blue-800">
+                            <span class="font-medium">Updating equipment list…</span>
+                            <span class="text-xs tabular-nums">{{ $refreshDone }}/{{ $refreshTotal }} brands</span>
+                        </div>
+                        <div class="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                                 style="width: {{ $refreshPct }}%"></div>
+                        </div>
+                    @else
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-blue-800">
+                                <span>Last AI refresh: {{ \Carbon\Carbon::parse($lastRefresh['ran_at'])->format('d M Y H:i') }}</span>
+                                <span class="text-green-700 font-medium">{{ $lastRefresh['added'] }} new types added</span>
+                                <span class="text-gray-600">{{ $lastRefresh['skipped'] }} already existed</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-green-200 rounded-full h-2 overflow-hidden">
+                            <div class="bg-green-500 h-2 rounded-full w-full"></div>
+                        </div>
                         @foreach ($lastRefresh['errors'] ?? [] as $err)
-                            <span class="text-red-600">{{ $err }}</span>
+                            <p class="mt-2 text-red-600 text-xs">{{ $err }}</p>
                         @endforeach
-                    </div>
+                    @endif
                 </div>
             @endif
 
