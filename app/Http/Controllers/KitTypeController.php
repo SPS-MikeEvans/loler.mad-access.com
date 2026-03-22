@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreKitTypeRequest;
 use App\Http\Requests\UpdateKitTypeRequest;
-use App\Jobs\RefreshKitTypesFromAI;
 use App\Models\KitType;
+use App\Services\KitTypeAiRefreshService;
 use App\Support\DefaultChecklist;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
@@ -106,12 +106,13 @@ class KitTypeController extends Controller
             ->with('success', 'Kit type updated successfully.');
     }
 
-    public function refresh(): RedirectResponse
+    public function refresh(KitTypeAiRefreshService $service): RedirectResponse
     {
-        RefreshKitTypesFromAI::dispatch();
+        $totals = $service->run();
 
-        return redirect()->route('kit-types.index')
-            ->with('success', 'Equipment list refresh started for all 14 brands. New types will appear within a few minutes — this page updates automatically.');
+        $message = "{$totals['added']} new equipment types added, {$totals['skipped']} already existed.";
+
+        return redirect()->route('kit-types.index')->with('success', $message);
     }
 
     public function destroy(KitType $kitType): RedirectResponse
