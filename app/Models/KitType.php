@@ -27,6 +27,7 @@ class KitType extends Model
         'resources_links',
         'spec_pdf_path',
         'inspection_pdf_path',
+        'ai_suggested',
     ];
 
     protected function casts(): array
@@ -37,6 +38,7 @@ class KitType extends Model
             'inspection_price' => 'float',
             'checklist_json' => 'array',
             'resources_links' => 'array',
+            'ai_suggested' => 'boolean',
         ];
     }
 

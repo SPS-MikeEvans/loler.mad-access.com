@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('08:00')
             ->timezone('Europe/London')
             ->withoutOverlapping();
+
+        $schedule->command('queue:work --stop-when-empty --max-time=240')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

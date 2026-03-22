@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreKitTypeRequest;
 use App\Http\Requests\UpdateKitTypeRequest;
+use App\Jobs\RefreshKitTypesFromAI;
 use App\Models\KitType;
 use App\Support\DefaultChecklist;
 use Illuminate\Http\RedirectResponse;
@@ -99,9 +100,18 @@ class KitTypeController extends Controller
         }
 
         $kitType->update($data);
+        $kitType->update(['ai_suggested' => false]);
 
         return redirect()->route('kit-types.index')
             ->with('success', 'Kit type updated successfully.');
+    }
+
+    public function refresh(): RedirectResponse
+    {
+        RefreshKitTypesFromAI::dispatch();
+
+        return redirect()->route('kit-types.index')
+            ->with('success', 'Equipment list refresh started for all 14 brands. New types will appear within a few minutes — this page updates automatically.');
     }
 
     public function destroy(KitType $kitType): RedirectResponse

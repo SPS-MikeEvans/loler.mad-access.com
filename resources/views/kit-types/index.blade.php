@@ -20,6 +20,29 @@
                 </div>
             @endif
 
+            @php $lastRefresh = \Illuminate\Support\Facades\Cache::get('kit_types.refresh_total'); @endphp
+            @if ($lastRefresh)
+                <div class="mb-4 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg text-sm"
+                     x-data="{ poll: true }"
+                     x-init="if ({{ $lastRefresh['done'] ?? 0 }} < {{ $lastRefresh['dispatched'] ?? 14 }}) {
+                         let t = setInterval(() => { if (poll) location.reload() }, 10000);
+                         setTimeout(() => { clearInterval(t); poll = false }, 300000);
+                     }">
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-blue-800">
+                        @if (($lastRefresh['done'] ?? 0) < ($lastRefresh['dispatched'] ?? 14))
+                            <span class="font-medium">Refreshing… ({{ $lastRefresh['done'] ?? 0 }}/{{ $lastRefresh['dispatched'] ?? 14 }} brands done)</span>
+                        @else
+                            <span>Last AI refresh: {{ \Carbon\Carbon::parse($lastRefresh['ran_at'])->format('d M Y H:i') }}</span>
+                            <span class="text-green-700 font-medium">{{ $lastRefresh['added'] }} new types added</span>
+                            <span>{{ $lastRefresh['skipped'] }} already existed</span>
+                        @endif
+                        @foreach ($lastRefresh['errors'] ?? [] as $err)
+                            <span class="text-red-600">{{ $err }}</span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6" x-data="{ search: '', category: '' }">
 
@@ -37,9 +60,24 @@
                                 @endforeach
                             </select>
                         </div>
-                        <a href="{{ route('kit-types.create') }}">
-                            <x-primary-button>Add Kit Type</x-primary-button>
-                        </a>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <a href="{{ route('kit-types.create') }}">
+                                <x-primary-button>Add Kit Type</x-primary-button>
+                            </a>
+                            @if(auth()->user()->isAdmin())
+                                <form method="POST" action="{{ route('kit-types.ai-refresh') }}">
+                                    @csrf
+                                    <button type="submit"
+                                            onclick="return confirm('Query xAI to find new equipment types for 14 brands? Existing records will not be changed.')"
+                                            class="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                                        <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        Update Equipment List
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
 
                     @if ($kitTypes->isEmpty())
@@ -83,7 +121,12 @@
                                                 (search === '' || '{{ strtolower(addslashes($type->name . ' ' . $type->brand . ' ' . $type->category)) }}'.includes(search.toLowerCase())) &&
                                                 (category === '' || '{{ addslashes($type->category) }}' === category)
                                             ">
-                                            <td class="px-4 py-3 font-medium text-gray-900 text-sm">{{ $type->name }}</td>
+                                            <td class="px-4 py-3 font-medium text-gray-900 text-sm">
+                                                {{ $type->name }}
+                                                @if ($type->ai_suggested)
+                                                    <span class="ml-1 px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-700">AI suggested</span>
+                                                @endif
+                                            </td>
                                             <td class="px-4 py-3 whitespace-nowrap text-gray-600 text-sm">{{ $type->brand ?? '—' }}</td>
                                             <td class="px-4 py-3 whitespace-nowrap text-sm">
                                                 @if ($type->category)
