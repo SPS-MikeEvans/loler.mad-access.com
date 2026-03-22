@@ -51,15 +51,16 @@ class KitTypeAiRefreshService
             return collect(self::BRANDS)->map(
                 fn (string $brand) => $pool->as($brand)
                     ->withToken(config('services.xai.api_key'))
-                    ->timeout(90)
+                    ->timeout(120)
                     ->post(config('services.xai.base_url').'/chat/completions', [
                         'model' => config('services.xai.model'),
                         'messages' => [
                             ['role' => 'system', 'content' => $this->systemPrompt()],
-                            ['role' => 'user', 'content' => "Generate the equipment list for: {$brand}"],
+                            ['role' => 'user', 'content' => "Search the {$brand} website and generate the equipment list for: {$brand}"],
                         ],
                         'response_format' => ['type' => 'json_object'],
-                        'temperature' => 0.2,
+                        'temperature' => 0.1,
+                        'search_parameters' => ['mode' => 'on'],
                     ])
             )->all();
         });
@@ -161,26 +162,29 @@ class KitTypeAiRefreshService
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
-You are a LOLER (Lifting Operations and Lifting Equipment Regulations 1998) equipment expert for the United Kingdom working in 2026.
+You are a LOLER (Lifting Operations and Lifting Equipment Regulations 1998) equipment expert for the United Kingdom working in 2026. You have live web search available — use it.
 
-When given a brand name, return a comprehensive JSON object with a single key "equipment" containing an array of working-at-height safety products from that brand that are subject to LOLER thorough examination.
+When given a brand name, you must:
+1. Search the brand's official website to find their current professional/industrial product range.
+2. For each product, search for its Documents, Product Specifications or similar section on the product page to find PDF links for user instructions and technical datasheets.
+3. Return a comprehensive JSON object with a single key "equipment" containing an array of products subject to LOLER thorough examination.
 
 Include: harnesses, lanyards, energy absorbers, connectors/carabiners, descenders, ascenders, pulleys, ropes (dynamic and static), rigging plates, rigging blocks, foot ascenders, mechanical hitches, anchors, and other PPE used in rope access, arboriculture, tree surgery, industrial rope access, and rescue.
 
 Each item must have these exact fields:
-- name (string): exact product name as marketed — be specific (e.g. "Avao Bod Fast" not just "Harness"). Do not duplicate items.
+- name (string): exact product name as marketed — be specific (e.g. "Anchor Ring 26mm" not just "Anchor Ring"). Do not duplicate items.
 - category (string): one of [Harness, Lanyard, Connector, Descender, Ascender, Pulley, Rope, Rigging Plate, Rigging Block, Foot Ascender, Mechanical Hitch, Energy Absorber, Anchor, Helmet, Other]
 - interval_months (integer): LOLER inspection interval — 6 for most dynamic load-bearing equipment, 12 for lower-risk static items
 - lifts_people (boolean): true if designed to support a person's weight
 - swl_description (string): safe working load or max user weight per EN standards, e.g. "Max user weight: 150 kg (EN 361)"
 - inspection_price_gbp (number): realistic UK trade price in GBP for a single LOLER thorough examination — typically £25–£80
-- technical_pdf_url (string|null): full URL to official manufacturer technical datasheet PDF — only if you are highly confident it is real and publicly accessible in 2026, otherwise null
-- instructions_pdf_url (string|null): full URL to official instructions for use PDF — same confidence rule, otherwise null
+- technical_pdf_url (string|null): direct URL to the manufacturer's technical datasheet or declaration of conformity PDF found on their website — verify the link resolves before including it, otherwise null
+- instructions_pdf_url (string|null): direct URL to the manufacturer's instructions for use PDF found on their website — verify the link resolves before including it, otherwise null
 
 Rules:
+- Use web search to find real PDF document URLs from the manufacturer's own website. Do not guess or construct URLs.
 - Only include currently manufactured products. Include discontinued products only if very common in UK workplaces in 2026.
-- Do not duplicate items (same product in different colours counts as one).
-- Do not invent PDF URLs. Only include URLs you are highly confident are real.
+- Do not duplicate items (same product in different colours or sizes counts as one entry).
 - Output must be valid JSON only. No markdown, no explanation, no extra text.
 PROMPT;
     }
