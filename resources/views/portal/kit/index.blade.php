@@ -46,7 +46,7 @@
                                 @endphp
                                 <details class="mobile-list-card overflow-hidden group"
                                     x-show="search === ''
-                                        || '{{ strtolower($item->kitType->name) }}'.includes(search.toLowerCase())
+                                        || '{{ strtolower($item->typeName()) }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
                                         || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
@@ -54,7 +54,7 @@
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="mobile-meta-label">Equipment Type</p>
-                                                <p class="mt-1 break-words text-base font-semibold text-slate-900">{{ $item->kitType->name }}</p>
+                                                <p class="mt-1 break-words text-base font-semibold text-slate-900">{{ $item->typeName() }}</p>
                                             </div>
                                             <svg class="mt-1 h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -127,11 +127,11 @@
                                         @endphp
                                         <tr class="hover:bg-gray-50"
                                             x-show="search === ''
-                                                || '{{ strtolower($item->kitType->name) }}'.includes(search.toLowerCase())
+                                                || '{{ strtolower($item->typeName()) }}'.includes(search.toLowerCase())
                                                 || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
                                                 || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
                                                 || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
-                                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $item->kitType->name }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $item->typeName() }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex flex-wrap gap-1">

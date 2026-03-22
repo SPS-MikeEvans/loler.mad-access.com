@@ -20,6 +20,7 @@ class KitItem extends Model
     protected $fillable = [
         'client_id',
         'kit_type_id',
+        'custom_type_name',
         'asset_tag',
         'qr_code',
         'manufacturer',
@@ -84,5 +85,15 @@ class KitItem extends Model
     public function latestInspection(): ?Inspection
     {
         return $this->inspections()->latest('inspection_date')->first();
+    }
+
+    public function typeName(): string
+    {
+        return $this->kitType?->name ?? $this->custom_type_name ?? '—';
+    }
+
+    public function isCustomType(): bool
+    {
+        return $this->kit_type_id === null && $this->custom_type_name !== null;
     }
 }

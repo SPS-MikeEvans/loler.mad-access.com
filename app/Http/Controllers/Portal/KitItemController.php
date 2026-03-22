@@ -28,8 +28,10 @@ class KitItemController extends Controller
     public function create(): View
     {
         $kitTypes = KitType::orderBy('name')->get();
+        $categories = $kitTypes->pluck('category')->filter()->unique()->sort()->values();
+        $brands = $kitTypes->pluck('brand')->filter()->unique()->sort()->values();
 
-        return view('portal.kit.create', compact('kitTypes'));
+        return view('portal.kit.create', compact('kitTypes', 'categories', 'brands'));
     }
 
     public function store(StorePortalKitItemRequest $request): RedirectResponse
@@ -40,10 +42,34 @@ class KitItemController extends Controller
             ['pending_review' => true]
         ));
 
-        AuditLog::record('created', 'KitItem', $kitItem->id, "Client submitted new item: {$kitItem->asset_tag}");
+        if ($kitItem->isCustomType()) {
+            $similar = KitType::whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($kitItem->custom_type_name).'%'])->first();
+            $note = $similar
+                ? "Client submitted custom item \"{$kitItem->custom_type_name}\" — possible match: {$similar->name} (ID {$similar->id})"
+                : "Client submitted custom item: {$kitItem->custom_type_name}";
+            AuditLog::record('created', 'KitItem', $kitItem->id, $note);
+        } else {
+            AuditLog::record('created', 'KitItem', $kitItem->id, "Client submitted new item: {$kitItem->asset_tag}");
+        }
 
         return redirect()->route('portal.kit.index')
             ->with('success', 'Equipment submitted. Our team will review and activate it shortly.');
+    }
+
+    public function updateCustomName(KitItem $kitItem, Request $request): RedirectResponse
+    {
+        $this->authorize('manage-own-kit', $kitItem);
+
+        abort_unless($kitItem->isCustomType() && $kitItem->pending_review, 403);
+
+        $validated = $request->validate([
+            'custom_type_name' => ['required', 'string', 'max:100'],
+        ]);
+
+        $kitItem->update($validated);
+        AuditLog::record('updated', 'KitItem', $kitItem->id, "Client corrected custom type name to: {$validated['custom_type_name']}");
+
+        return redirect()->route('portal.kit.show', $kitItem)->with('success', 'Equipment name updated.');
     }
 
     public function show(KitItem $kitItem): View

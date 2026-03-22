@@ -29,6 +29,7 @@ class DashboardController extends Controller
                     ->count(),
                 'flagged_items' => KitItem::flaggedForInspection()->with('client', 'kitType')->get(),
                 'pending_items' => KitItem::clientPending()->with('client', 'kitType')->get(),
+                'custom_items' => KitItem::whereNull('kit_type_id')->whereNotNull('custom_type_name')->with('client')->get(),
             ];
         }
 

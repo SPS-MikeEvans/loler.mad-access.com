@@ -89,7 +89,12 @@
                                         @foreach ($metrics['flagged_items'] as $item)
                                             <tr>
                                                 <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ $item->client->name }}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">{{ $item->kitType->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                                                    {{ $item->typeName() }}
+                                                    @if ($item->isCustomType())
+                                                        <span class="ml-1 text-xs text-gray-400 italic">(custom)</span>
+                                                    @endif
+                                                </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
                                                 <td class="px-4 py-3 text-gray-600 max-w-xs">{{ Str::limit($item->flag_notes, 60) ?: '—' }}</td>
                                                 <td class="px-4 py-3 whitespace-nowrap {{ $item->next_inspection_due?->isPast() ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
@@ -130,7 +135,12 @@
                                         @foreach ($metrics['pending_items'] as $item)
                                             <tr>
                                                 <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ $item->client->name }}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">{{ $item->kitType->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                                                    {{ $item->typeName() }}
+                                                    @if ($item->isCustomType())
+                                                        <span class="ml-1 text-xs text-gray-400 italic">(custom)</span>
+                                                    @endif
+                                                </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600">
                                                     {{ $item->created_at?->format('d M Y') ?? '—' }}
@@ -138,6 +148,43 @@
                                                 <td class="px-4 py-3 text-right">
                                                     <a href="{{ route('clients.kit-items.show', [$item->client, $item]) }}"
                                                        class="text-brand-navy hover:text-brand-red text-xs font-medium">Review →</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($metrics['custom_items']->isNotEmpty())
+                    <div class="mobile-card overflow-hidden sm:rounded-lg border border-amber-100">
+                        <div class="mobile-card-body">
+                            <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                Custom Equipment Pending Type Assignment
+                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">{{ $metrics['custom_items']->count() }}</span>
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3">These items were submitted by clients with a custom equipment name. Assign the correct LOLER type before an inspection can be recorded.</p>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Custom Name</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Asset / Serial</th>
+                                            <th class="px-4 py-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        @foreach ($metrics['custom_items'] as $item)
+                                            <tr>
+                                                <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ $item->client->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-amber-700 font-medium">{{ $item->custom_type_name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-right">
+                                                    <a href="{{ route('clients.kit-items.show', [$item->client, $item]) }}"
+                                                       class="text-brand-navy hover:text-brand-red text-xs font-medium">Assign Type →</a>
                                                 </td>
                                             </tr>
                                         @endforeach

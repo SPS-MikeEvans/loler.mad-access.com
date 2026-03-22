@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
-            {{ $kitItem->kitType->name }}
+            {{ $kitItem->typeName() }}
         </h2>
     </x-slot>
 
@@ -19,8 +19,12 @@
                 <div class="mobile-card-body">
                     <div class="flex items-start justify-between gap-4 mb-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900">{{ $kitItem->kitType->name }}</h3>
-                            <p class="text-sm text-gray-500">{{ $kitItem->kitType->category }}</p>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ $kitItem->typeName() }}</h3>
+                            @if ($kitItem->kitType)
+                                <p class="text-sm text-gray-500">{{ $kitItem->kitType->category }}</p>
+                            @else
+                                <p class="text-sm text-gray-500 italic">Custom equipment — pending type assignment</p>
+                            @endif
                         </div>
                         @php
                             $statusColour = match($kitItem->status) {
@@ -78,6 +82,30 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Edit custom name (pending custom items only) --}}
+            @if ($kitItem->isCustomType() && $kitItem->pending_review)
+                <div class="mobile-card overflow-hidden sm:rounded-lg">
+                    <div class="mobile-card-body">
+                        <h3 class="text-base font-semibold text-gray-900 mb-2">Edit Equipment Name</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            You entered a custom equipment name. You can correct it here before our team reviews the item.
+                        </p>
+                        <form method="POST" action="{{ route('portal.kit.updateCustomName', $kitItem) }}">
+                            @csrf
+                            @method('PATCH')
+                            <div class="mb-4">
+                                <x-input-label for="custom_type_name" :value="__('Equipment Name')" />
+                                <x-text-input id="custom_type_name" name="custom_type_name" type="text"
+                                    class="mt-1 block w-full" :value="old('custom_type_name', $kitItem->custom_type_name)"
+                                    maxlength="100" required />
+                                <x-input-error :messages="$errors->get('custom_type_name')" class="mt-2" />
+                            </div>
+                            <x-primary-button>Update Name</x-primary-button>
+                        </form>
+                    </div>
+                </div>
+            @endif
 
             {{-- Flag for inspection --}}
             @if (! $kitItem->pending_review && $kitItem->status !== 'retired')

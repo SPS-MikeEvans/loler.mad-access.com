@@ -125,6 +125,7 @@ Route::prefix('portal')
         Route::get('/kit/{kitItem}', [Portal\KitItemController::class, 'show'])->name('kit.show');
         Route::patch('/kit/{kitItem}/flag', [Portal\KitItemController::class, 'flag'])->name('kit.flag');
         Route::patch('/kit/{kitItem}/retire', [Portal\KitItemController::class, 'retire'])->name('kit.retire');
+        Route::patch('/kit/{kitItem}/custom-name', [Portal\KitItemController::class, 'updateCustomName'])->name('kit.updateCustomName');
 
         Route::get('/kit/{kitItem}/inspections', [Portal\InspectionController::class, 'index'])->name('inspections.index');
         Route::get('/inspections/{inspection}/pdf', [Portal\InspectionController::class, 'downloadPdf'])->name('inspections.pdf');

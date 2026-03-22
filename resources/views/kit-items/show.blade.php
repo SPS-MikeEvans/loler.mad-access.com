@@ -105,6 +105,7 @@
 
                 <div class="px-4 py-4 bg-gray-50 sm:px-6">
                     <div class="mobile-action-group">
+                    @if ($kitItem->kit_type_id)
                     <a href="{{ route('clients.kit-items.inspections.create', [$client, $kitItem]) }}"
                        class="inline-flex w-full items-center justify-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-700 sm:w-auto">
                         Start LOLER Inspection
@@ -113,6 +114,12 @@
                        class="inline-flex w-full items-center justify-center rounded-xl bg-brand-navy px-5 py-3 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-brand-red sm:w-auto">
                         Start Mobile Inspection
                     </a>
+                    @else
+                    <div class="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                        A LOLER equipment type must be assigned before an inspection can be recorded.
+                        <a href="{{ route('clients.kit-items.edit', [$client, $kitItem]) }}" class="underline font-medium">Assign type now →</a>
+                    </div>
+                    @endif
                     <a href="{{ route('clients.kit-items.edit', [$client, $kitItem]) }}"
                        class="mobile-action-link border-amber-200 text-amber-700 hover:border-amber-300 hover:bg-amber-50">
                         Edit
