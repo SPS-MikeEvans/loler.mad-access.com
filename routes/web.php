@@ -30,7 +30,7 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
     Route::resource('clients', ClientController::class);
     Route::post('/kit-types/ai-refresh', [KitTypeController::class, 'refresh'])
         ->name('kit-types.ai-refresh')
-        ->middleware(['role:admin', 'throttle:1,60']);
+        ->middleware(['role:admin', 'throttle:5,60']);
     Route::resource('kit-types', KitTypeController::class)->except(['show']);
     Route::resource('clients.kit-items', KitItemController::class)->scoped();
     Route::resource('clients.kit-items.inspections', InspectionController::class)

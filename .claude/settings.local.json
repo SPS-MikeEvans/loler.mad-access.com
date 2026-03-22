@@ -64,7 +64,8 @@
       "Bash(find /home/mike/Documents/VSCode/loler-kit/app/Notifications -type f -name *.php)",
       "Bash(find /home/mike/Documents/VSCode/loler-kit/resources/views/emails -type f -name *.blade.php)",
       "mcp__laravel-boost__get-config",
-      "mcp__laravel-boost__list-available-env-vars"
+      "mcp__laravel-boost__list-available-env-vars",
+      "mcp__laravel-boost__tinker"
     ]
   }
 }
