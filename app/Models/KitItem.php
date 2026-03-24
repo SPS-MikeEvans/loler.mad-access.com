@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -80,6 +81,14 @@ class KitItem extends Model
     public function inspections(): HasMany
     {
         return $this->hasMany(Inspection::class);
+    }
+
+    /** @return BelongsToMany<Job, $this> */
+    public function jobs(): BelongsToMany
+    {
+        return $this->belongsToMany(Job::class, 'inspection_job_kit_items', 'kit_item_id', 'inspection_job_id')
+            ->withPivot('condition_notes')
+            ->withTimestamps();
     }
 
     public function latestInspection(): ?Inspection

@@ -195,6 +195,42 @@
                     </div>
                 @endif
 
+                @if ($metrics['jobs_awaiting_return']->isNotEmpty())
+                    <div class="mobile-card overflow-hidden sm:rounded-lg border border-green-100">
+                        <div class="mobile-card-body">
+                            <h3 class="text-base font-semibold text-gray-900 mb-3">
+                                Jobs Awaiting Return
+                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">{{ $metrics['jobs_awaiting_return']->count() }}</span>
+                            </h3>
+                            <p class="text-sm text-gray-500 mb-3">These jobs have all inspections completed and are waiting for the client to collect their items.</p>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job #</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Completed</th>
+                                            <th class="px-4 py-2"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        @foreach ($metrics['jobs_awaiting_return'] as $job)
+                                            <tr>
+                                                <td class="px-4 py-3 font-medium text-gray-900">{{ $job->job_number }}</td>
+                                                <td class="px-4 py-3 text-gray-700">{{ $job->client->name }}</td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ $job->updated_at->format('d M Y') }}</td>
+                                                <td class="px-4 py-3 text-right">
+                                                    <a href="{{ route('jobs.show', $job) }}" class="text-brand-navy hover:text-brand-red text-xs font-medium">Sign Return →</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
             @elseif (auth()->user()->isInspector())
                 <div class="mobile-card">
                     <div class="mobile-card-body">

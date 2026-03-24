@@ -6,9 +6,11 @@ use App\Http\Requests\StoreKitItemRequest;
 use App\Http\Requests\UpdateKitItemRequest;
 use App\Models\AuditLog;
 use App\Models\Client;
+use App\Models\Job;
 use App\Models\KitItem;
 use App\Models\KitType;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,6 +23,21 @@ class KitItemController extends Controller
         // Laravel's default password confirmation window is 3 hours.
         // We can tighten this later with custom middleware if needed.
         $this->middleware(['role:admin', 'password.confirm', 'throttle:destructive-actions'])->only('destroy');
+    }
+
+    public function forClient(Client $client): JsonResponse
+    {
+        $items = $client->kitItems()
+            ->whereNotIn('status', ['retired'])
+            ->with('kitType')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (KitItem $item) => [
+                'id' => $item->id,
+                'label' => $item->typeName().($item->asset_tag ? ' — '.$item->asset_tag : ($item->serial_no ? ' — '.$item->serial_no : '')),
+            ]);
+
+        return response()->json($items);
     }
 
     public function index(Client $client): View
@@ -68,6 +85,16 @@ class KitItemController extends Controller
 
         $kitItem = KitItem::create($data);
         $kitItem->update(['qr_code' => route('clients.kit-items.show', [$client, $kitItem])]);
+
+        if ($returnToJob = request()->query('return_to_job')) {
+            $job = Job::find((int) $returnToJob);
+            if ($job && $job->client_id === $client->id) {
+                $job->kitItems()->syncWithoutDetaching([$kitItem->id]);
+
+                return redirect()->route('jobs.edit', $job)
+                    ->with('success', 'Kit item added and attached to job.');
+            }
+        }
 
         return redirect()->route('clients.kit-items.index', $client)
             ->with('success', 'Kit item added successfully.');

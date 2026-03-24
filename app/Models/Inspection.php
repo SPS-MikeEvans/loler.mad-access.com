@@ -20,6 +20,7 @@ class Inspection extends Model
         'kit_item_id',
         'inspector_user_id',
         'invoice_id',
+        'inspection_job_id',
         'status',
         'started_at',
         'inspection_date',
@@ -35,10 +36,10 @@ class Inspection extends Model
     {
         return [
             'inspection_date' => 'date',
-            'next_due_date'   => 'date',
-            'started_at'      => 'datetime',
-            'created_at'      => 'datetime',
-            'cost'            => 'decimal:2',
+            'next_due_date' => 'date',
+            'started_at' => 'datetime',
+            'created_at' => 'datetime',
+            'cost' => 'decimal:2',
         ];
     }
 
@@ -76,5 +77,38 @@ class Inspection extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /** @return BelongsTo<Job, $this> */
+    public function job(): BelongsTo
+    {
+        return $this->belongsTo(Job::class, 'inspection_job_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Inspection $inspection): void {
+            if ($inspection->inspection_job_id) {
+                $job = $inspection->job;
+
+                if ($job && $job->canTransitionTo('in_progress')) {
+                    $job->update(['status' => 'in_progress']);
+                }
+            }
+        });
+
+        static::updated(function (Inspection $inspection): void {
+            if ($inspection->isDirty('status') && $inspection->status === 'complete' && $inspection->inspection_job_id) {
+                $job = $inspection->job;
+
+                if ($job && $job->canTransitionTo('complete')) {
+                    $progress = $job->inspectionProgress();
+
+                    if ($progress['total'] > 0 && $progress['done'] >= $progress['total']) {
+                        $job->update(['status' => 'complete']);
+                    }
+                }
+            }
+        });
     }
 }

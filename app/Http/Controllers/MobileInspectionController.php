@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Inspection;
 use App\Models\InspectionCheck;
 use App\Models\InspectionCheckPhoto;
+use App\Models\Job;
 use App\Models\KitItem;
 use App\Support\DefaultChecklist;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -56,23 +57,28 @@ class MobileInspectionController extends Controller
             $checklist = DefaultChecklist::items();
         }
 
+        $activeJobs = Job::whereIn('status', ['open', 'in_progress'])
+            ->whereHas('kitItems', fn ($q) => $q->where('kit_items.id', $kitItem->id))
+            ->pluck('id');
+
         $inspection = Inspection::create([
-            'kit_item_id'       => $kitItem->id,
+            'kit_item_id' => $kitItem->id,
             'inspector_user_id' => $user->id,
-            'status'            => 'draft',
-            'started_at'        => now(),
-            'inspection_date'   => now()->toDateString(),
-            'next_due_date'     => now()->addMonths($kitItem->kitType->interval_months ?? 6)->toDateString(),
-            'overall_status'    => 'pass',
+            'inspection_job_id' => $activeJobs->count() === 1 ? $activeJobs->first() : null,
+            'status' => 'draft',
+            'started_at' => now(),
+            'inspection_date' => now()->toDateString(),
+            'next_due_date' => now()->addMonths($kitItem->kitType->interval_months ?? 6)->toDateString(),
+            'overall_status' => 'pass',
         ]);
 
         foreach ($checklist as $item) {
             InspectionCheck::create([
-                'inspection_id'   => $inspection->id,
-                'check_category'  => $item['category'],
-                'check_text'      => $item['text'],
-                'status'          => null,
-                'notes'           => null,
+                'inspection_id' => $inspection->id,
+                'check_category' => $item['category'],
+                'check_text' => $item['text'],
+                'status' => null,
+                'notes' => null,
             ]);
         }
 
@@ -102,8 +108,8 @@ class MobileInspectionController extends Controller
 
         $data = $request->validate([
             'check_id' => ['required', 'integer', 'exists:inspection_checks,id'],
-            'status'   => ['nullable', 'in:pass,fail,n/a'],
-            'notes'    => ['nullable', 'string', 'max:2000'],
+            'status' => ['nullable', 'in:pass,fail,n/a'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $check = InspectionCheck::where('id', $data['check_id'])
@@ -112,7 +118,7 @@ class MobileInspectionController extends Controller
 
         $check->update([
             'status' => $data['status'] ?? null,
-            'notes'  => $data['notes'] ?? null,
+            'notes' => $data['notes'] ?? null,
         ]);
 
         return response()->json(['ok' => true]);
@@ -130,16 +136,16 @@ class MobileInspectionController extends Controller
 
         $file = $request->file('photo');
         $extension = $file->getClientOriginalExtension() ?: 'jpg';
-        $path = 'inspection-photos/' . Str::uuid() . '.' . $extension;
+        $path = 'inspection-photos/'.Str::uuid().'.'.$extension;
         Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
 
         $photo = InspectionCheckPhoto::create([
             'inspection_check_id' => $check->id,
-            'path'                => $path,
+            'path' => $path,
         ]);
 
         return response()->json([
-            'id'  => $photo->id,
+            'id' => $photo->id,
             'url' => Storage::disk('public')->url($path),
         ]);
     }
@@ -163,7 +169,7 @@ class MobileInspectionController extends Controller
 
         $passCount = $inspection->checks->where('status', 'pass')->count();
         $failCount = $inspection->checks->where('status', 'fail')->count();
-        $naCount   = $inspection->checks->where('status', 'n/a')->count();
+        $naCount = $inspection->checks->where('status', 'n/a')->count();
         $unanswered = $inspection->checks->whereNull('status')->count();
 
         return view('mobile.inspect.complete', compact('inspection', 'passCount', 'failCount', 'naCount', 'unanswered'));
@@ -183,21 +189,21 @@ class MobileInspectionController extends Controller
         $overallStatus = $checks->contains('status', 'fail') ? 'fail' : 'pass';
 
         $data = $request->validate([
-            'report_notes'     => ['nullable', 'string', 'max:5000'],
+            'report_notes' => ['nullable', 'string', 'max:5000'],
             'digital_signature' => ['nullable', 'string'],
         ]);
 
         $sigPath = null;
         if (! empty($data['digital_signature'])) {
-            $sigPath = 'signatures/' . Str::uuid() . '.png';
+            $sigPath = 'signatures/'.Str::uuid().'.png';
             $imageData = base64_decode(preg_replace('/^data:image\/\w+;base64,/', '', $data['digital_signature']));
             Storage::disk('public')->put($sigPath, $imageData);
         }
 
         $inspection->update([
-            'status'           => 'complete',
-            'overall_status'   => $overallStatus,
-            'report_notes'     => $data['report_notes'] ?? null,
+            'status' => 'complete',
+            'overall_status' => $overallStatus,
+            'report_notes' => $data['report_notes'] ?? null,
             'digital_sig_path' => $sigPath,
         ]);
 
@@ -206,7 +212,7 @@ class MobileInspectionController extends Controller
         $newKitStatus = $overallStatus === 'fail' ? 'quarantined' : 'in_service';
         $kitItem->update([
             'next_inspection_due' => $inspection->next_due_date,
-            'status'              => $newKitStatus,
+            'status' => $newKitStatus,
         ]);
 
         $this->generatePdf($inspection);
@@ -246,7 +252,7 @@ class MobileInspectionController extends Controller
         }
 
         if ($user->qualification_expiry && $user->qualification_expiry->isPast()) {
-            return 'Your qualifications expired on ' . $user->qualification_expiry->format('d M Y') . '.';
+            return 'Your qualifications expired on '.$user->qualification_expiry->format('d M Y').'.';
         }
 
         return null;
@@ -257,11 +263,11 @@ class MobileInspectionController extends Controller
         $inspection->load(['kitItem.kitType', 'kitItem.client', 'inspector', 'checks.photos']);
 
         $data = [
-            'inspection'   => $inspection,
+            'inspection' => $inspection,
             'company_name' => config('app.name', 'LOLER Inspection Service'),
-            'report_date'  => now()->format('d F Y'),
-            'report_no'    => str_pad((string) $inspection->id, 6, '0', STR_PAD_LEFT),
-            'verdict'      => $inspection->overall_status === 'pass'
+            'report_date' => now()->format('d F Y'),
+            'report_no' => str_pad((string) $inspection->id, 6, '0', STR_PAD_LEFT),
+            'verdict' => $inspection->overall_status === 'pass'
                 ? 'SAFE FOR CONTINUED USE'
                 : 'NOT SAFE FOR USE – DEFECTS IDENTIFIED',
         ];

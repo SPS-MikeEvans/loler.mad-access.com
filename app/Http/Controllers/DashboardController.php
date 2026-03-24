@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Inspection;
+use App\Models\Job;
 use App\Models\KitItem;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,7 @@ class DashboardController extends Controller
                 'flagged_items' => KitItem::flaggedForInspection()->with('client', 'kitType')->get(),
                 'pending_items' => KitItem::clientPending()->with('client', 'kitType')->get(),
                 'custom_items' => KitItem::whereNull('kit_type_id')->whereNotNull('custom_type_name')->with('client')->get(),
+                'jobs_awaiting_return' => Job::where('status', 'complete')->with('client')->latest()->get(),
             ];
         }
 

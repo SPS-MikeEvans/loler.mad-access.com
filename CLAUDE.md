@@ -249,3 +249,35 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - IMPORTANT: Always use `search-docs` tool for version-specific Tailwind CSS documentation and updated code examples. Never rely on training data.
 - IMPORTANT: Activate `tailwindcss-development` every time you're working with a Tailwind CSS or styling-related task.
 </laravel-boost-guidelines>
+
+## Action Safety
+
+When adding or changing any state-changing feature, treat action safety as part of the feature, not polish.
+
+Requirements:
+- Avoid ambiguous mutating endpoints. Do not use one route/controller action to “toggle” destructive or high-risk state when explicit actions are clearer.
+- Do not rely on browser `confirm()`, double-tap, or client-only UI patterns for destructive actions. Server-side intent validation is required.
+- High-risk actions must use explicit confirmation flows:
+  - use short, deterministic, server-issued confirmation phrases stored in session and scoped to user + action + record
+  - consume confirmation tokens after successful use
+  - reject missing, stale, mismatched, or replayed confirmations
+- Back-office destructive actions must default to the narrowest practical authorization, usually admin-only unless there is a clear business reason otherwise.
+- Sensitive admin destructive actions should use password confirmation in addition to typed confirmation.
+- Reuse the shared confirmation modal/component and confirmation helper instead of inventing one-off patterns.
+- Audit logs for confirmed destructive actions must record:
+  - action performed
+  - subject type and ID
+  - confirming user ID
+  - confirmation phrase/token used
+  - confirmation timestamp
+- Add rate limiting to destructive actions where appropriate.
+- Prefer soft-delete readiness for high-risk records, even if restore/undo is not yet exposed.
+- Every new destructive or high-risk mutation must include tests for:
+  - authorization
+  - confirmation success/failure
+  - replay/stale-token rejection
+  - audit logging
+  - throttling where applicable
+
+Rule of thumb:
+If an action can delete, retire, unlink, disable, revoke, overwrite important data, or trigger irreversible side effects, design it as a confirmed action with explicit intent, narrow permissions, and audit coverage.

@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Inspection;
 use App\Models\InspectionCheck;
 use App\Models\InspectionCheckPhoto;
+use App\Models\Job;
 use App\Models\KitItem;
 use App\Support\DefaultChecklist;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -63,7 +64,11 @@ class InspectionController extends Controller
             $uploadTokens[$i] = $token;
         }
 
-        return view('inspections.create', compact('client', 'kitItem', 'checklist', 'instructions', 'links', 'usingDefault', 'uploadTokens'));
+        $activeJobs = Job::whereIn('status', ['open', 'in_progress'])
+            ->whereHas('kitItems', fn ($q) => $q->where('kit_items.id', $kitItem->id))
+            ->get();
+
+        return view('inspections.create', compact('client', 'kitItem', 'checklist', 'instructions', 'links', 'usingDefault', 'uploadTokens', 'activeJobs'));
     }
 
     public function store(StoreInspectionRequest $request, Client $client, KitItem $kitItem): RedirectResponse
@@ -75,9 +80,12 @@ class InspectionController extends Controller
             $sigPath = $request->file('digital_sig_path')->store('signatures', 'public');
         }
 
+        $jobId = $this->resolveJobId($kitItem, $request->integer('inspection_job_id') ?: null);
+
         $inspection = Inspection::create([
             'kit_item_id' => $kitItem->id,
             'inspector_user_id' => auth()->id(),
+            'inspection_job_id' => $jobId,
             'inspection_date' => $data['inspection_date'],
             'next_due_date' => $data['next_due_date'],
             'overall_status' => $data['overall_status'],
@@ -192,6 +200,19 @@ class InspectionController extends Controller
         $date = $inspection->inspection_date->format('Y-m-d');
 
         return $pdf->download("loler-thorough-exam-{$tag}-{$date}.pdf");
+    }
+
+    private function resolveJobId(KitItem $kitItem, ?int $explicitJobId): ?int
+    {
+        if ($explicitJobId) {
+            return $explicitJobId;
+        }
+
+        $activeJobs = Job::whereIn('status', ['open', 'in_progress'])
+            ->whereHas('kitItems', fn ($q) => $q->where('kit_items.id', $kitItem->id))
+            ->pluck('id');
+
+        return $activeJobs->count() === 1 ? $activeJobs->first() : null;
     }
 
     private function isMobileRequest(): bool

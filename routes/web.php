@@ -7,6 +7,9 @@ use App\Http\Controllers\CompanyLiabilityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InspectionController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\JobPhotoController;
+use App\Http\Controllers\JobSignatureController;
 use App\Http\Controllers\KitItemController;
 use App\Http\Controllers\KitTypeController;
 use App\Http\Controllers\MobileInspectionController;
@@ -60,6 +63,19 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
 
     Route::resource('users', UserController::class)->middleware('role:admin');
 
+    // AJAX: kit items for a client (used in job create/edit)
+    Route::get('/api/clients/{client}/kit-items', [KitItemController::class, 'forClient'])->name('api.clients.kit-items');
+
+    // Jobs (manifests / work orders)
+    Route::resource('jobs', JobController::class);
+    Route::get('jobs/{job}/bag-label', [JobController::class, 'bagLabel'])->name('jobs.bag-label');
+    Route::get('jobs/{job}/sign-drop-off', [JobSignatureController::class, 'showDropOff'])->name('jobs.sign-drop-off');
+    Route::post('jobs/{job}/sign-drop-off', [JobSignatureController::class, 'captureDropOff'])->name('jobs.capture-drop-off');
+    Route::get('jobs/{job}/sign-return', [JobSignatureController::class, 'showReturn'])->name('jobs.sign-return');
+    Route::post('jobs/{job}/sign-return', [JobSignatureController::class, 'captureReturn'])->name('jobs.capture-return');
+    Route::post('jobs/{job}/photos', [JobPhotoController::class, 'store'])->name('jobs.photos.store');
+    Route::delete('jobs/{job}/photos/{photo}', [JobPhotoController::class, 'destroy'])->name('jobs.photos.destroy');
+
     Route::get('/audit-log', [AuditLogController::class, 'index'])
         ->name('audit-log.index')
         ->middleware('role:admin');
@@ -80,6 +96,10 @@ Route::get('/photo-capture/{token}/qr', [PhotoCaptureController::class, 'qrCode'
 
 Route::get('/inspect/{qrCode}', [MobileInspectionController::class, 'scanStart'])
     ->name('inspect.qr')
+    ->middleware('auth');
+
+Route::get('/bag/{bagQrCode}', [JobController::class, 'scanBag'])
+    ->name('jobs.scan-bag')
     ->middleware('auth');
 
 Route::prefix('mobile/inspections')->middleware(['auth', 'verified'])->group(function () {
@@ -133,6 +153,9 @@ Route::prefix('portal')
 
         Route::get('/kit/{kitItem}/inspections', [Portal\InspectionController::class, 'index'])->name('inspections.index');
         Route::get('/inspections/{inspection}/pdf', [Portal\InspectionController::class, 'downloadPdf'])->name('inspections.pdf');
+
+        Route::get('/jobs', [Portal\JobController::class, 'index'])->name('jobs.index');
+        Route::get('/jobs/{job}', [Portal\JobController::class, 'show'])->name('jobs.show');
     });
 
 require __DIR__.'/auth.php';
