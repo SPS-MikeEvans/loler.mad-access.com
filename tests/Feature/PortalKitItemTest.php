@@ -55,7 +55,7 @@ it('flags an item for inspection, stores notes, and notifies admins', function (
     $item = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'FLAG-001', 'status' => 'in_service']);
 
     $this->actingAs($user)
-        ->patch(route('portal.kit.flag', $item), ['flag_notes' => 'Urgent — job next week'])
+        ->post(route('portal.kit.flag', $item), ['flag_notes' => 'Urgent — job next week'])
         ->assertRedirect(route('portal.kit.show', $item));
 
     $item->refresh();
@@ -65,6 +65,28 @@ it('flags an item for inspection, stores notes, and notifies admins', function (
     expect(AuditLog::where('subject_id', $item->id)->where('action', 'updated')->exists())->toBeTrue();
 
     Notification::assertSentTo($admin, KitItemFlaggedForInspection::class);
+});
+
+it('removes an inspection flag through the dedicated destroy route', function () {
+    [$client, $user, $kitType] = makePortalSetup('unflag');
+
+    $item = KitItem::create([
+        'client_id' => $client->id,
+        'kit_type_id' => $kitType->id,
+        'asset_tag' => 'UNFLAG-001',
+        'status' => 'in_service',
+        'flagged_for_inspection' => true,
+        'flag_notes' => 'No longer needed',
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('portal.kit.flag.destroy', $item))
+        ->assertRedirect(route('portal.kit.show', $item));
+
+    $item->refresh();
+
+    expect($item->flagged_for_inspection)->toBeFalse();
+    expect($item->flag_notes)->toBeNull();
 });
 
 it('retires an item, clears the flag, and creates an audit log entry', function () {
@@ -78,8 +100,10 @@ it('retires an item, clears the flag, and creates an audit log entry', function 
         'flagged_for_inspection' => true,
     ]);
 
+    $this->actingAs($user)->get(route('portal.kit.show', $item));
+
     $this->actingAs($user)
-        ->patch(route('portal.kit.retire', $item))
+        ->patch(route('portal.kit.retire', $item), ['confirmation_phrase' => "RETIRE-ITEM-{$item->id}"])
         ->assertRedirect(route('portal.kit.index'));
 
     $item->refresh();
@@ -96,7 +120,7 @@ it('forbids a client viewer from flagging another client\'s item', function () {
     $otherItem = KitItem::create(['client_id' => $clientB->id, 'kit_type_id' => $kitTypeB->id, 'asset_tag' => 'FORBID-001', 'status' => 'in_service']);
 
     $this->actingAs($userA)
-        ->patch(route('portal.kit.flag', $otherItem))
+        ->post(route('portal.kit.flag', $otherItem))
         ->assertForbidden();
 });
 

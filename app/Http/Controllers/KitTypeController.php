@@ -4,15 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreKitTypeRequest;
 use App\Http\Requests\UpdateKitTypeRequest;
+use App\Models\AuditLog;
 use App\Models\KitType;
 use App\Services\KitTypeAiRefreshService;
 use App\Support\DefaultChecklist;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class KitTypeController extends Controller
 {
+    public function __construct()
+    {
+        // Laravel's default password confirmation window is 3 hours.
+        // We can tighten this later with custom middleware if needed.
+        $this->middleware(['role:admin', 'password.confirm', 'throttle:destructive-actions'])->only('destroy');
+    }
+
     public function index(): View
     {
         $sortable = ['name', 'category', 'brand', 'interval_months'];
@@ -21,8 +30,18 @@ class KitTypeController extends Controller
 
         $kitTypes = KitType::orderBy($sort, $dir)->orderBy('name')->get();
         $categories = KitType::whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
+        $deleteConfirmations = auth()->user()?->isAdmin()
+            ? $kitTypes->mapWithKeys(fn (KitType $type) => [
+                $type->id => $this->issueConfirmedAction(
+                    'delete.kit-type',
+                    'KitType',
+                    $type->id,
+                    "DELETE-TYPE-{$type->id}"
+                ),
+            ])
+            : collect();
 
-        return view('kit-types.index', compact('kitTypes', 'categories', 'sort', 'dir'));
+        return view('kit-types.index', compact('kitTypes', 'categories', 'sort', 'dir', 'deleteConfirmations'));
     }
 
     public function create(): View
@@ -115,8 +134,19 @@ class KitTypeController extends Controller
         return redirect()->route('kit-types.index')->with('success', $message);
     }
 
-    public function destroy(KitType $kitType): RedirectResponse
+    public function destroy(Request $request, KitType $kitType): RedirectResponse
     {
+        $confirmation = $this->makeConfirmedAction(
+            'delete.kit-type',
+            'KitType',
+            $kitType->id,
+            "DELETE-TYPE-{$kitType->id}"
+        );
+
+        if ($failure = $this->ensureConfirmedAction($request, $confirmation)) {
+            return $failure;
+        }
+
         if ($kitType->kitItems()->exists()) {
             return redirect()->route('kit-types.index')
                 ->with('error', "Cannot delete \"{$kitType->name}\" — it is assigned to one or more kit items.");
@@ -129,6 +159,19 @@ class KitTypeController extends Controller
         if ($kitType->inspection_pdf_path) {
             Storage::disk('public')->delete($kitType->inspection_pdf_path);
         }
+
+        AuditLog::record(
+            'deleted',
+            'KitType',
+            $kitType->id,
+            "Deleted kit type {$kitType->name}",
+            [
+                'confirmed_action' => $confirmation->actionKey,
+                'confirmation_phrase' => $confirmation->phrase,
+                'confirmed_by_user_id' => auth()->id(),
+                'confirmed_at' => now()->toIso8601String(),
+            ]
+        );
 
         $kitType->delete();
 

@@ -109,13 +109,14 @@
                                             <a href="{{ route('clients.kit-items.inspections.create', [$client, $item]) }}" class="mobile-action-link">Inspect</a>
                                             <a href="{{ route('clients.kit-items.show', [$client, $item]) }}" class="mobile-action-link">View</a>
                                             <a href="{{ route('clients.kit-items.edit', [$client, $item]) }}" class="mobile-action-link">Edit</a>
-                                            <form method="POST" action="{{ route('clients.kit-items.destroy', [$client, $item]) }}" class="w-full">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="mobile-action-link w-full border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50" onclick="return confirm('Delete this kit item?')">
+                                            @if (auth()->user()->isAdmin())
+                                                <button type="button"
+                                                    class="mobile-action-link w-full border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
+                                                    x-data
+                                                    x-on:click="$dispatch('open-modal', '{{ $deleteConfirmations[$item->id]->modalName }}')">
                                                     Delete
                                                 </button>
-                                            </form>
+                                            @endif
                                         </div>
                                     </div>
                                 </details>
@@ -223,20 +224,16 @@
                                                                 Edit
                                                             </a>
                                                         </div>
-                                                        <div class="py-1">
-                                                            <form method="POST"
-                                                                  action="{{ route('clients.kit-items.destroy', [$client, $item]) }}"
-                                                                  x-data="{ confirmed: false }"
-                                                                  x-on:submit.prevent="confirmed ? $el.submit() : (confirmed = true)">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit"
-                                                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                                        @if (auth()->user()->isAdmin())
+                                                            <div class="py-1">
+                                                                <button type="button"
+                                                                        class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                                                                        @click="open = false; $dispatch('open-modal', '{{ $deleteConfirmations[$item->id]->modalName }}')">
                                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                                    <span x-text="confirmed ? 'Tap again to confirm' : 'Delete'"></span>
+                                                                    <span>Delete</span>
                                                                 </button>
-                                                            </form>
-                                                        </div>
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     </template>
                                                 </div>
@@ -246,6 +243,21 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (auth()->user()->isAdmin())
+                            @foreach ($kitItems as $item)
+                                <x-confirmed-action-modal
+                                    :name="$deleteConfirmations[$item->id]->modalName"
+                                    title="Delete Kit Item"
+                                    :message="'This permanently deletes '.$item->typeName().'. Type the phrase below to continue.'"
+                                    :phrase="$deleteConfirmations[$item->id]->phrase"
+                                    :action="route('clients.kit-items.destroy', [$client, $item])"
+                                    method="DELETE"
+                                    submit-label="Delete Kit Item"
+                                    :password-confirm="true"
+                                />
+                            @endforeach
+                        @endif
                     @endif
 
                     <div class="mt-6">

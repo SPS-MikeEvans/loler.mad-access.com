@@ -188,25 +188,35 @@
                                             <td class="px-4 py-3 whitespace-nowrap text-right text-sm space-x-4">
                                                 <a href="{{ route('kit-types.edit', $type) }}"
                                                    class="text-amber-600 hover:text-amber-900">Edit</a>
-                                                <form method="POST"
-                                                      action="{{ route('kit-types.destroy', $type) }}"
-                                                      class="inline"
-                                                      x-data
-                                                      x-on:submit.prevent="
-                                                          $el.querySelector('button').textContent !== 'Confirm?' ?
-                                                              ($el.querySelector('button').textContent = 'Confirm?') :
-                                                              $el.submit()
-                                                      ">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
-                                                </form>
+                                                @if (auth()->user()->isAdmin())
+                                                    <button type="button"
+                                                          class="text-red-600 hover:text-red-900"
+                                                          x-data
+                                                          x-on:click="$dispatch('open-modal', '{{ $deleteConfirmations[$type->id]->modalName }}')">
+                                                        Delete
+                                                    </button>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (auth()->user()->isAdmin())
+                            @foreach ($kitTypes as $type)
+                                <x-confirmed-action-modal
+                                    :name="$deleteConfirmations[$type->id]->modalName"
+                                    title="Delete Kit Type"
+                                    :message="'This permanently deletes '.$type->name.'. Type the phrase below to continue.'"
+                                    :phrase="$deleteConfirmations[$type->id]->phrase"
+                                    :action="route('kit-types.destroy', $type)"
+                                    method="DELETE"
+                                    submit-label="Delete Kit Type"
+                                    :password-confirm="true"
+                                />
+                            @endforeach
+                        @endif
                     @endif
                 </div>
             </div>

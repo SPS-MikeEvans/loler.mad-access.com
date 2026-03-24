@@ -4,24 +4,43 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreKitItemRequest;
 use App\Http\Requests\UpdateKitItemRequest;
+use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\KitItem;
 use App\Models\KitType;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class KitItemController extends Controller
 {
+    public function __construct()
+    {
+        // Laravel's default password confirmation window is 3 hours.
+        // We can tighten this later with custom middleware if needed.
+        $this->middleware(['role:admin', 'password.confirm', 'throttle:destructive-actions'])->only('destroy');
+    }
+
     public function index(Client $client): View
     {
         $kitItems = $client->kitItems()
             ->with('kitType')
             ->orderBy('next_inspection_due')
             ->get();
+        $deleteConfirmations = auth()->user()?->isAdmin()
+            ? $kitItems->mapWithKeys(fn (KitItem $item) => [
+                $item->id => $this->issueConfirmedAction(
+                    'delete.kit-item',
+                    'KitItem',
+                    $item->id,
+                    "DELETE-ITEM-{$item->id}"
+                ),
+            ])
+            : collect();
 
-        return view('kit-items.index', compact('client', 'kitItems'));
+        return view('kit-items.index', compact('client', 'kitItems', 'deleteConfirmations'));
     }
 
     public function create(Client $client): View
@@ -100,8 +119,32 @@ class KitItemController extends Controller
             ->with('success', 'Kit item updated successfully.');
     }
 
-    public function destroy(Client $client, KitItem $kitItem): RedirectResponse
+    public function destroy(Request $request, Client $client, KitItem $kitItem): RedirectResponse
     {
+        $confirmation = $this->makeConfirmedAction(
+            'delete.kit-item',
+            'KitItem',
+            $kitItem->id,
+            "DELETE-ITEM-{$kitItem->id}"
+        );
+
+        if ($failure = $this->ensureConfirmedAction($request, $confirmation)) {
+            return $failure;
+        }
+
+        AuditLog::record(
+            'deleted',
+            'KitItem',
+            $kitItem->id,
+            "Deleted kit item {$kitItem->typeName()}",
+            [
+                'confirmed_action' => $confirmation->actionKey,
+                'confirmation_phrase' => $confirmation->phrase,
+                'confirmed_by_user_id' => auth()->id(),
+                'confirmed_at' => now()->toIso8601String(),
+            ]
+        );
+
         $kitItem->delete();
 
         return redirect()->route('clients.kit-items.index', $client)

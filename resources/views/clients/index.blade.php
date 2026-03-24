@@ -14,6 +14,12 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="mb-4 px-4 py-3 bg-red-100 text-red-800 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <div class="mobile-card overflow-hidden sm:rounded-lg">
                 <div class="mobile-card-body">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -51,15 +57,14 @@
                                     <div class="mt-4 mobile-action-group">
                                         <a href="{{ route('clients.show', $client) }}" class="mobile-action-link">Open Client</a>
                                         <a href="{{ route('clients.edit', $client) }}" class="mobile-action-link">Edit</a>
-                                        <form action="{{ route('clients.destroy', $client) }}" method="POST" class="w-full sm:w-auto">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
+                                        @if (auth()->user()->isAdmin())
+                                            <button type="button"
                                                 class="mobile-action-link border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 w-full"
-                                                onclick="return confirm('Delete {{ addslashes($client->name) }}?')">
+                                                x-data
+                                                x-on:click="$dispatch('open-modal', '{{ $deleteConfirmations[$client->id]->modalName }}')">
                                                 Delete
                                             </button>
-                                        </form>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -87,15 +92,14 @@
                                                 <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 items-end">
                                                     <a href="{{ route('clients.kit-items.index', $client) }}" class="text-brand-navy hover:text-brand-red">Kit List</a>
                                                     <a href="{{ route('clients.edit', $client) }}" class="text-brand-navy hover:text-brand-red">Edit</a>
-                                                    <form action="{{ route('clients.destroy', $client) }}" method="POST" class="inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit"
+                                                    @if (auth()->user()->isAdmin())
+                                                        <button type="button"
                                                             class="text-red-600 hover:text-red-900"
-                                                            onclick="return confirm('Delete {{ addslashes($client->name) }}?')">
+                                                            x-data
+                                                            x-on:click="$dispatch('open-modal', '{{ $deleteConfirmations[$client->id]->modalName }}')">
                                                             Delete
                                                         </button>
-                                                    </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -103,6 +107,21 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (auth()->user()->isAdmin())
+                            @foreach ($clients as $client)
+                                <x-confirmed-action-modal
+                                    :name="$deleteConfirmations[$client->id]->modalName"
+                                    title="Delete Client"
+                                    :message="'This permanently deletes '.$client->name.'. Type the phrase below to continue.'"
+                                    :phrase="$deleteConfirmations[$client->id]->phrase"
+                                    :action="route('clients.destroy', $client)"
+                                    method="DELETE"
+                                    submit-label="Delete Client"
+                                    :password-confirm="true"
+                                />
+                            @endforeach
+                        @endif
                     @endif
                 </div>
             </div>

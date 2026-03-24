@@ -76,11 +76,19 @@ class KitItemController extends Controller
     {
         $this->authorize('manage-own-kit', $kitItem);
         $kitItem->load(['kitType', 'inspections' => fn ($q) => $q->complete()->latest('inspection_date')]);
+        $retireConfirmation = ! $kitItem->pending_review && $kitItem->status !== 'retired'
+            ? $this->issueConfirmedAction(
+                'retire.kit-item',
+                'KitItem',
+                $kitItem->id,
+                "RETIRE-ITEM-{$kitItem->id}"
+            )
+            : null;
 
-        return view('portal.kit.show', compact('kitItem'));
+        return view('portal.kit.show', compact('kitItem', 'retireConfirmation'));
     }
 
-    public function flag(KitItem $kitItem, Request $request): RedirectResponse
+    public function storeFlag(KitItem $kitItem, Request $request): RedirectResponse
     {
         $this->authorize('manage-own-kit', $kitItem);
 
@@ -88,33 +96,48 @@ class KitItemController extends Controller
             'flag_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $nowFlagged = ! $kitItem->flagged_for_inspection;
-
         $kitItem->update([
-            'flagged_for_inspection' => $nowFlagged,
-            'flag_notes' => $nowFlagged ? ($validated['flag_notes'] ?? null) : null,
+            'flagged_for_inspection' => true,
+            'flag_notes' => $validated['flag_notes'] ?? null,
         ]);
 
-        if ($nowFlagged) {
-            AuditLog::record('updated', 'KitItem', $kitItem->id, "Client flagged item {$kitItem->asset_tag} for inspection");
+        AuditLog::record('updated', 'KitItem', $kitItem->id, "Client flagged item {$kitItem->asset_tag} for inspection");
 
-            User::query()->whereIn('role', ['admin', 'inspector'])->each(
-                fn (User $u) => $u->notify(new KitItemFlaggedForInspection($kitItem, $validated['flag_notes'] ?? ''))
-            );
-        } else {
-            AuditLog::record('updated', 'KitItem', $kitItem->id, "Client un-flagged item {$kitItem->asset_tag}");
-        }
+        User::query()->whereIn('role', ['admin', 'inspector'])->each(
+            fn (User $u) => $u->notify(new KitItemFlaggedForInspection($kitItem, $validated['flag_notes'] ?? ''))
+        );
 
-        $message = $nowFlagged
-            ? 'Item flagged for inspection. Our team has been notified.'
-            : 'Inspection flag removed.';
-
-        return redirect()->route('portal.kit.show', $kitItem)->with('success', $message);
+        return redirect()->route('portal.kit.show', $kitItem)->with('success', 'Item flagged for inspection. Our team has been notified.');
     }
 
-    public function retire(KitItem $kitItem): RedirectResponse
+    public function destroyFlag(KitItem $kitItem): RedirectResponse
     {
         $this->authorize('manage-own-kit', $kitItem);
+
+        $kitItem->update([
+            'flagged_for_inspection' => false,
+            'flag_notes' => null,
+        ]);
+
+        AuditLog::record('updated', 'KitItem', $kitItem->id, "Client removed inspection flag from item {$kitItem->asset_tag}");
+
+        return redirect()->route('portal.kit.show', $kitItem)->with('success', 'Inspection flag removed.');
+    }
+
+    public function retire(Request $request, KitItem $kitItem): RedirectResponse
+    {
+        $this->authorize('manage-own-kit', $kitItem);
+
+        $confirmation = $this->makeConfirmedAction(
+            'retire.kit-item',
+            'KitItem',
+            $kitItem->id,
+            "RETIRE-ITEM-{$kitItem->id}"
+        );
+
+        if ($failure = $this->ensureConfirmedAction($request, $confirmation)) {
+            return $failure;
+        }
 
         $kitItem->update([
             'status' => 'retired',
@@ -122,7 +145,18 @@ class KitItemController extends Controller
             'pending_review' => false,
         ]);
 
-        AuditLog::record('updated', 'KitItem', $kitItem->id, "Client retired item {$kitItem->asset_tag}");
+        AuditLog::record(
+            'updated',
+            'KitItem',
+            $kitItem->id,
+            "Client retired item {$kitItem->asset_tag}",
+            [
+                'confirmed_action' => $confirmation->actionKey,
+                'confirmation_phrase' => $confirmation->phrase,
+                'confirmed_by_user_id' => auth()->id(),
+                'confirmed_at' => now()->toIso8601String(),
+            ]
+        );
 
         return redirect()->route('portal.kit.index')->with('success', 'Item marked as retired.');
     }

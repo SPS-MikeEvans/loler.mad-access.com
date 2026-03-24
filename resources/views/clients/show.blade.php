@@ -14,6 +14,12 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="mb-4 px-4 py-3 bg-red-100 text-red-800 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             <div class="mobile-card overflow-hidden sm:rounded-lg">
                 <div class="mobile-card-body space-y-4">
                     <div class="sm:hidden">
@@ -57,15 +63,14 @@
                     <a href="{{ route('clients.edit', $client) }}" class="w-full sm:w-auto">
                         <x-primary-button class="w-full justify-center sm:w-auto">Edit</x-primary-button>
                     </a>
-                    <form action="{{ route('clients.destroy', $client) }}" method="POST" class="w-full sm:w-auto">
-                        @csrf
-                        @method('DELETE')
+                    @if(auth()->user()->isAdmin())
                         <x-danger-button
                             class="w-full justify-center sm:w-auto"
-                            onclick="return confirm('Delete {{ addslashes($client->name) }}? This cannot be undone.')">
+                            x-data
+                            x-on:click="$dispatch('open-modal', '{{ $deleteConfirmation->modalName }}')">
                             Delete
                         </x-danger-button>
-                    </form>
+                    @endif
                     <a href="{{ route('clients.index') }}" class="mobile-action-link">Back to Clients</a>
                     </div>
                 </div>
@@ -183,5 +188,18 @@
                 @endif
             </div>
         </div>
+
+        @if(auth()->user()->isAdmin() && $deleteConfirmation)
+            <x-confirmed-action-modal
+                :name="$deleteConfirmation->modalName"
+                title="Delete Client"
+                :message="'This permanently deletes '.$client->name.'. Type the phrase below to continue.'"
+                :phrase="$deleteConfirmation->phrase"
+                :action="route('clients.destroy', $client)"
+                method="DELETE"
+                submit-label="Delete Client"
+                :password-confirm="true"
+            />
+        @endif
     </div>
 </x-app-layout>

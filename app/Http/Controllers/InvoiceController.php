@@ -13,6 +13,13 @@ use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
+    public function __construct()
+    {
+        // Laravel's default password confirmation window is 3 hours.
+        // We can tighten this later with custom middleware if needed.
+        $this->middleware(['password.confirm', 'throttle:destructive-actions'])->only('destroy');
+    }
+
     public function create(Client $client): View
     {
         $uninvoicedInspections = $client->kitItems()
@@ -77,8 +84,16 @@ class InvoiceController extends Controller
     public function show(Client $client, Invoice $invoice): View
     {
         $invoice->load(['inspections.kitItem.kitType', 'inspections.inspector']);
+        $deleteConfirmation = auth()->user()?->isAdmin()
+            ? $this->issueConfirmedAction(
+                'delete.invoice',
+                'Invoice',
+                $invoice->id,
+                "DELETE-INVOICE-{$invoice->id}"
+            )
+            : null;
 
-        return view('invoices.show', compact('client', 'invoice'));
+        return view('invoices.show', compact('client', 'invoice', 'deleteConfirmation'));
     }
 
     public function downloadPdf(Client $client, Invoice $invoice): Response
@@ -94,12 +109,35 @@ class InvoiceController extends Controller
         return $pdf->download('invoice-' . $invoice->invoice_number . '.pdf');
     }
 
-    public function destroy(Client $client, Invoice $invoice): RedirectResponse
+    public function destroy(Request $request, Client $client, Invoice $invoice): RedirectResponse
     {
-        $invoice->inspections()->update(['invoice_id' => null]);
-        $invoice->delete();
+        $confirmation = $this->makeConfirmedAction(
+            'delete.invoice',
+            'Invoice',
+            $invoice->id,
+            "DELETE-INVOICE-{$invoice->id}"
+        );
 
-        AuditLog::record('deleted', 'Invoice', $invoice->id, "Deleted invoice {$invoice->invoice_number} for {$client->name}");
+        if ($failure = $this->ensureConfirmedAction($request, $confirmation)) {
+            return $failure;
+        }
+
+        $invoice->inspections()->update(['invoice_id' => null]);
+
+        AuditLog::record(
+            'deleted',
+            'Invoice',
+            $invoice->id,
+            "Deleted invoice {$invoice->invoice_number} for {$client->name}",
+            [
+                'confirmed_action' => $confirmation->actionKey,
+                'confirmation_phrase' => $confirmation->phrase,
+                'confirmed_by_user_id' => auth()->id(),
+                'confirmed_at' => now()->toIso8601String(),
+            ]
+        );
+
+        $invoice->delete();
 
         return redirect()->route('clients.show', $client)
             ->with('success', 'Invoice deleted and inspections unlinked.');

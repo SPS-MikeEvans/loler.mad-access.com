@@ -14,6 +14,12 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="px-4 py-3 bg-red-100 text-red-800 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             {{-- Item details --}}
             <div class="mobile-card overflow-hidden sm:rounded-lg">
                 <div class="mobile-card-body">
@@ -121,7 +127,6 @@
                             </p>
                             <form method="POST" action="{{ route('portal.kit.flag', $kitItem) }}" x-data="{ expanded: false }">
                                 @csrf
-                                @method('PATCH')
 
                                 <div class="mb-4">
                                     <button type="button" @click="expanded = !expanded"
@@ -143,9 +148,9 @@
                             <p class="text-sm text-gray-600 mb-4">
                                 This item is currently flagged. Our team has been notified. Remove the flag if the inspection is no longer required.
                             </p>
-                            <form method="POST" action="{{ route('portal.kit.flag', $kitItem) }}">
+                            <form method="POST" action="{{ route('portal.kit.flag.destroy', $kitItem) }}">
                                 @csrf
-                                @method('PATCH')
+                                @method('DELETE')
                                 <x-secondary-button type="submit">Remove Flag</x-secondary-button>
                             </form>
                         @endif
@@ -221,13 +226,13 @@
                         <p class="text-sm text-gray-600 mb-4">
                             Mark this item as retired if it is no longer in service. This action cannot be undone from the portal — contact us if you need to reinstate it.
                         </p>
-                        <form method="POST" action="{{ route('portal.kit.retire', $kitItem) }}"
-                              x-data="{ confirmed: false }"
-                              x-on:submit.prevent="confirmed ? $el.submit() : (confirmed = true)">
-                            @csrf
-                            @method('PATCH')
-                            <x-danger-button type="submit" x-text="confirmed ? 'Tap again to confirm retirement' : 'Retire Item'"></x-danger-button>
-                        </form>
+                        <x-danger-button
+                            type="button"
+                            x-data
+                            x-on:click="$dispatch('open-modal', '{{ $retireConfirmation->modalName }}')"
+                        >
+                            Retire Item
+                        </x-danger-button>
                     </div>
                 </div>
             @endif
@@ -238,4 +243,16 @@
 
         </div>
     </div>
+
+    @if ($retireConfirmation)
+        <x-confirmed-action-modal
+            :name="$retireConfirmation->modalName"
+            title="Retire Kit Item"
+            :message="'This marks '.$kitItem->typeName().' as retired and clears any active inspection flag. Type the phrase below to continue.'"
+            :phrase="$retireConfirmation->phrase"
+            :action="route('portal.kit.retire', $kitItem)"
+            method="PATCH"
+            submit-label="Retire Item"
+        />
+    @endif
 </x-app-layout>

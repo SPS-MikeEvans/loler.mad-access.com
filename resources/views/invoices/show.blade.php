@@ -14,6 +14,12 @@
                 </div>
             @endif
 
+            @if (session('error'))
+                <div class="px-4 py-3 bg-red-100 text-red-800 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             {{-- Invoice summary card --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
@@ -36,19 +42,15 @@
                                 </a>
                             @endcan
                             @if(auth()->user()->role === 'admin')
-                                <form method="POST" action="{{ route('clients.invoices.destroy', [$client, $invoice]) }}"
-                                      x-data="{ confirmed: false }"
-                                      x-on:submit.prevent="confirmed ? $el.submit() : (confirmed = true)">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 text-sm font-semibold rounded-md hover:bg-red-50 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                        <span x-text="confirmed ? 'Tap again to confirm' : 'Delete Invoice'"></span>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 text-sm font-semibold rounded-md hover:bg-red-50 transition"
+                                        x-data
+                                        x-on:click="$dispatch('open-modal', '{{ $deleteConfirmation->modalName }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                    <span>Delete Invoice</span>
+                                </button>
                             @endif
                         </div>
                     </div>
@@ -120,4 +122,17 @@
 
         </div>
     </div>
+
+    @if(auth()->user()->role === 'admin' && $deleteConfirmation)
+        <x-confirmed-action-modal
+            :name="$deleteConfirmation->modalName"
+            title="Delete Invoice"
+            :message="'This permanently deletes invoice '.$invoice->invoice_number.' and unlinks its inspections. Type the phrase below to continue.'"
+            :phrase="$deleteConfirmation->phrase"
+            :action="route('clients.invoices.destroy', [$client, $invoice])"
+            method="DELETE"
+            submit-label="Delete Invoice"
+            :password-confirm="true"
+        />
+    @endif
 </x-app-layout>

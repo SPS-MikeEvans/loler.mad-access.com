@@ -8,16 +8,33 @@ use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class UserController extends Controller
 {
+    public function __construct()
+    {
+        // Laravel's default password confirmation window is 3 hours.
+        // We can tighten this later with custom middleware if needed.
+        $this->middleware(['password.confirm', 'throttle:destructive-actions'])->only('destroy');
+    }
+
     public function index(): View
     {
         $users = User::with('client')->orderBy('name')->get();
+        $deleteConfirmations = $users->reject(fn (User $user) => $user->is(auth()->user()))
+            ->mapWithKeys(fn (User $user) => [
+                $user->id => $this->issueConfirmedAction(
+                    'delete.user',
+                    'User',
+                    $user->id,
+                    "DELETE-USER-{$user->id}"
+                ),
+            ]);
 
-        return view('users.index', compact('users'));
+        return view('users.index', compact('users', 'deleteConfirmations'));
     }
 
     public function create(): View
@@ -75,15 +92,37 @@ class UserController extends Controller
             ->with('success', "User {$user->name} updated successfully.");
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         if ($user->is(auth()->user())) {
             return redirect()->route('users.index')
                 ->with('error', 'You cannot delete your own account.');
         }
 
+        $confirmation = $this->makeConfirmedAction(
+            'delete.user',
+            'User',
+            $user->id,
+            "DELETE-USER-{$user->id}"
+        );
+
+        if ($failure = $this->ensureConfirmedAction($request, $confirmation)) {
+            return $failure;
+        }
+
         $name = $user->name;
-        AuditLog::record('deleted', 'User', $user->id, "Deleted user {$name} ({$user->email})");
+        AuditLog::record(
+            'deleted',
+            'User',
+            $user->id,
+            "Deleted user {$name} ({$user->email})",
+            [
+                'confirmed_action' => $confirmation->actionKey,
+                'confirmation_phrase' => $confirmation->phrase,
+                'confirmed_by_user_id' => auth()->id(),
+                'confirmed_at' => now()->toIso8601String(),
+            ]
+        );
         $user->delete();
 
         return redirect()->route('users.index')

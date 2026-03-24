@@ -82,19 +82,12 @@
                                                 <a href="{{ route('users.edit', $user) }}"
                                                    class="text-amber-600 hover:text-amber-900">Edit</a>
                                                 @if (!$user->is(auth()->user()))
-                                                    <form method="POST"
-                                                          action="{{ route('users.destroy', $user) }}"
-                                                          class="inline"
-                                                          x-data
-                                                          x-on:submit.prevent="
-                                                              $el.querySelector('button').textContent !== 'Confirm?'
-                                                                  ? ($el.querySelector('button').textContent = 'Confirm?')
-                                                                  : $el.submit()
-                                                          ">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
-                                                    </form>
+                                                    <button type="button"
+                                                            class="text-red-600 hover:text-red-900"
+                                                            x-data
+                                                            x-on:click="$dispatch('open-modal', '{{ $deleteConfirmations[$user->id]->modalName }}')">
+                                                        Delete
+                                                    </button>
                                                 @endif
                                             </td>
                                         </tr>
@@ -102,6 +95,21 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @foreach ($users as $user)
+                            @if (!$user->is(auth()->user()))
+                                <x-confirmed-action-modal
+                                    :name="$deleteConfirmations[$user->id]->modalName"
+                                    title="Delete User"
+                                    :message="'This permanently deletes '.$user->name.'. Type the phrase below to continue.'"
+                                    :phrase="$deleteConfirmations[$user->id]->phrase"
+                                    :action="route('users.destroy', $user)"
+                                    method="DELETE"
+                                    submit-label="Delete User"
+                                    :password-confirm="true"
+                                />
+                            @endif
+                        @endforeach
                     @endif
                 </div>
             </div>

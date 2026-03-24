@@ -17,6 +17,7 @@ class AuditLog extends Model
         'subject_type',
         'subject_id',
         'description',
+        'metadata',
         'created_at',
     ];
 
@@ -24,6 +25,7 @@ class AuditLog extends Model
     {
         return [
             'created_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 
@@ -33,7 +35,7 @@ class AuditLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function record(string $action, string $subjectType, ?int $subjectId, string $description): void
+    public static function record(string $action, string $subjectType, ?int $subjectId, string $description, ?array $metadata = null): void
     {
         static::create([
             'user_id'      => auth()->id(),
@@ -41,6 +43,7 @@ class AuditLog extends Model
             'subject_type' => $subjectType,
             'subject_id'   => $subjectId,
             'description'  => $description,
+            'metadata'     => $metadata,
             'created_at'   => now(),
         ]);
     }

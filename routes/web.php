@@ -126,7 +126,8 @@ Route::prefix('portal')
         Route::get('/kit/create', [Portal\KitItemController::class, 'create'])->name('kit.create');
         Route::post('/kit', [Portal\KitItemController::class, 'store'])->name('kit.store');
         Route::get('/kit/{kitItem}', [Portal\KitItemController::class, 'show'])->name('kit.show');
-        Route::patch('/kit/{kitItem}/flag', [Portal\KitItemController::class, 'flag'])->name('kit.flag');
+        Route::post('/kit/{kitItem}/flag', [Portal\KitItemController::class, 'storeFlag'])->name('kit.flag');
+        Route::delete('/kit/{kitItem}/flag', [Portal\KitItemController::class, 'destroyFlag'])->name('kit.flag.destroy');
         Route::patch('/kit/{kitItem}/retire', [Portal\KitItemController::class, 'retire'])->name('kit.retire');
         Route::patch('/kit/{kitItem}/custom-name', [Portal\KitItemController::class, 'updateCustomName'])->name('kit.updateCustomName');
 
