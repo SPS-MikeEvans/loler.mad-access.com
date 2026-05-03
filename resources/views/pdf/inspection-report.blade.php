@@ -33,6 +33,12 @@
         table.checklist th { background: #001F3F; color: #fff; padding: 5px 7px; text-align: left; border: 1px solid #001F3F; }
         table.checklist td { padding: 5px 7px; border: 1px solid #c8cdd6; vertical-align: top; }
         table.checklist tr:nth-child(even) td { background: #f9fafc; }
+        /* Repeat the column headers if the checklist itself spans multiple pages */
+        table.checklist thead { display: table-header-group; }
+        table.checklist tr { page-break-inside: avoid; }
+
+        /* Force a section to begin at the top of a new page (with its heading) */
+        .new-page { page-break-before: always; }
         .status-pass { color: #065f46; font-weight: bold; }
         .status-fail { color: #991b1b; font-weight: bold; }
         .status-na  { color: #6b7280; }
@@ -115,7 +121,8 @@
         @endif
     </table>
 
-    {{-- ── Section 3: Checklist ── --}}
+    {{-- ── Section 3: Checklist (always starts on a new page) ── --}}
+    <div class="new-page">
     <h2>3. Thorough Examination Results</h2>
     <table class="checklist">
         <thead>
@@ -150,6 +157,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 
     {{-- ── Section 4: Photos ── --}}
     @php $checksWithPhotos = $inspection->checks->filter(fn($c) => $c->photos->isNotEmpty()); @endphp
