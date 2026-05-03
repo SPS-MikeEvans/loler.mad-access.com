@@ -2,6 +2,7 @@
 
 use App\Models\AuditLog;
 use App\Models\Client;
+use App\Models\KitGroup;
 use App\Models\KitItem;
 use App\Models\KitType;
 use App\Models\User;
@@ -222,4 +223,55 @@ it('includes custom type items in the admin dashboard unassigned section', funct
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Mystery Harness X1');
+});
+
+it('submits a kit item assigned to an existing group', function () {
+    [$client, $user, $kitType] = makePortalSetup('grp-existing');
+    $group = KitGroup::factory()->create(['client_id' => $client->id, 'name' => 'Personal Set']);
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'kit_type_id' => $kitType->id,
+            'asset_tag' => 'GRP-EXIST-001',
+            'kit_group_id' => $group->id,
+        ])
+        ->assertRedirect(route('portal.kit.index'));
+
+    $item = KitItem::where('asset_tag', 'GRP-EXIST-001')->firstOrFail();
+    expect($item->kit_group_id)->toBe($group->id);
+});
+
+it('submits a kit item and creates a new group inline', function () {
+    [$client, $user, $kitType] = makePortalSetup('grp-new');
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'kit_type_id' => $kitType->id,
+            'asset_tag' => 'GRP-NEW-001',
+            'new_group_name' => 'Bag A',
+        ])
+        ->assertRedirect(route('portal.kit.index'));
+
+    $group = KitGroup::where('client_id', $client->id)->where('name', 'Bag A')->firstOrFail();
+    $item = KitItem::where('asset_tag', 'GRP-NEW-001')->firstOrFail();
+    expect($item->kit_group_id)->toBe($group->id);
+
+    expect(AuditLog::where('subject_type', 'KitGroup')->where('subject_id', $group->id)->where('action', 'created')->exists())->toBeTrue();
+    expect(AuditLog::where('subject_type', 'KitItem')->where('subject_id', $item->id)->where('action', 'created')->exists())->toBeTrue();
+});
+
+it('rejects a kit_group_id belonging to another client', function () {
+    [, $userA, $kitTypeA] = makePortalSetup('grp-xa');
+    [$clientB] = makePortalSetup('grp-xb');
+    $otherGroup = KitGroup::factory()->create(['client_id' => $clientB->id]);
+
+    $this->actingAs($userA)
+        ->post(route('portal.kit.store'), [
+            'kit_type_id' => $kitTypeA->id,
+            'asset_tag' => 'GRP-X-001',
+            'kit_group_id' => $otherGroup->id,
+        ])
+        ->assertSessionHasErrors('kit_group_id');
+
+    expect(KitItem::where('asset_tag', 'GRP-X-001')->exists())->toBeFalse();
 });

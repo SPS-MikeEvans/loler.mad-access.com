@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Notifications\KitItemFlaggedForInspection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class KitItemController extends Controller
@@ -57,20 +58,34 @@ class KitItemController extends Controller
 
     public function create(): View
     {
+        $client = auth()->user()->client;
         $kitTypes = KitType::orderBy('name')->get();
         $categories = $kitTypes->pluck('category')->filter()->unique()->sort()->values();
         $brands = $kitTypes->pluck('brand')->filter()->unique()->sort()->values();
+        $kitGroups = $client ? $client->kitGroups()->orderBy('name')->get() : collect();
 
-        return view('portal.kit.create', compact('kitTypes', 'categories', 'brands'));
+        return view('portal.kit.create', compact('kitTypes', 'categories', 'brands', 'kitGroups'));
     }
 
     public function store(StorePortalKitItemRequest $request): RedirectResponse
     {
         $client = auth()->user()->client;
-        $kitItem = $client->kitItems()->create(array_merge(
-            $request->validated(),
-            ['pending_review' => true]
-        ));
+        $validated = $request->validated();
+        $kitItem = null;
+
+        DB::transaction(function () use ($client, &$validated, &$kitItem) {
+            if (! empty($validated['new_group_name'])) {
+                $group = $client->kitGroups()->create(['name' => $validated['new_group_name']]);
+                $validated['kit_group_id'] = $group->id;
+                AuditLog::record('created', 'KitGroup', $group->id, "Client created kit group {$group->name} via Add Equipment");
+            }
+            unset($validated['new_group_name']);
+
+            $kitItem = $client->kitItems()->create(array_merge(
+                $validated,
+                ['pending_review' => true]
+            ));
+        });
 
         if ($kitItem->isCustomType()) {
             $similar = KitType::whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($kitItem->custom_type_name).'%'])->first();

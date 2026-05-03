@@ -161,27 +161,43 @@
                                                class="block w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-red focus:ring-brand-red">
 
                                         {{-- Category pills --}}
-                                        <div class="flex gap-2 overflow-x-auto pb-1" style="-ms-overflow-style:none; scrollbar-width:none;">
-                                            <button type="button" @click="activeCategory = ''"
-                                                    :class="activeCategory === '' ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                                    class="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition">All</button>
-                                            @foreach ($categories as $cat)
-                                                <button type="button" @click="activeCategory = {{ Js::from($cat) }}"
-                                                        :class="activeCategory === {{ Js::from($cat) }} ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                                        class="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition">{{ $cat }}</button>
-                                            @endforeach
+                                        <div x-data="{ expanded: false }">
+                                            <div :class="expanded ? '' : 'max-h-8 overflow-hidden'"
+                                                 class="flex flex-wrap gap-2 transition-all">
+                                                <button type="button" @click="activeCategory = ''"
+                                                        :class="activeCategory === '' ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                        class="px-3 py-1 rounded-full text-xs font-medium transition">All</button>
+                                                @foreach ($categories as $cat)
+                                                    <button type="button" @click="activeCategory = {{ Js::from($cat) }}"
+                                                            :class="activeCategory === {{ Js::from($cat) }} ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                            class="px-3 py-1 rounded-full text-xs font-medium transition">{{ $cat }}</button>
+                                                @endforeach
+                                            </div>
+                                            @if ($categories->count() > 5)
+                                                <button type="button" @click="expanded = !expanded"
+                                                        class="mt-1 text-xs text-brand-navy hover:text-brand-red font-medium"
+                                                        x-text="expanded ? 'Show fewer categories' : 'Show all categories'"></button>
+                                            @endif
                                         </div>
 
                                         {{-- Brand pills --}}
-                                        <div class="flex gap-2 overflow-x-auto pb-1" style="-ms-overflow-style:none; scrollbar-width:none;">
-                                            <button type="button" @click="activeBrand = ''"
-                                                    :class="activeBrand === '' ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                                    class="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition">All Brands</button>
-                                            @foreach ($brands as $brand)
-                                                <button type="button" @click="activeBrand = {{ Js::from($brand) }}"
-                                                        :class="activeBrand === {{ Js::from($brand) }} ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-                                                        class="shrink-0 px-3 py-1 rounded-full text-xs font-medium transition">{{ $brand }}</button>
-                                            @endforeach
+                                        <div x-data="{ expanded: false }">
+                                            <div :class="expanded ? '' : 'max-h-8 overflow-hidden'"
+                                                 class="flex flex-wrap gap-2 transition-all">
+                                                <button type="button" @click="activeBrand = ''"
+                                                        :class="activeBrand === '' ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                        class="px-3 py-1 rounded-full text-xs font-medium transition">All Brands</button>
+                                                @foreach ($brands as $brand)
+                                                    <button type="button" @click="activeBrand = {{ Js::from($brand) }}"
+                                                            :class="activeBrand === {{ Js::from($brand) }} ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                            class="px-3 py-1 rounded-full text-xs font-medium transition">{{ $brand }}</button>
+                                                @endforeach
+                                            </div>
+                                            @if ($brands->count() > 5)
+                                                <button type="button" @click="expanded = !expanded"
+                                                        class="mt-1 text-xs text-brand-navy hover:text-brand-red font-medium"
+                                                        x-text="expanded ? 'Show fewer brands' : 'Show all brands'"></button>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -257,6 +273,51 @@
                                               :value="old('model')" />
                                 <x-input-error :messages="$errors->get('model')" class="mt-2" />
                             </div>
+                        </div>
+
+                        <div class="mb-4" x-data="{
+                            mode: '{{ old('new_group_name') ? 'create' : 'select' }}',
+                            groupId: '{{ old('kit_group_id', '') }}',
+                            newName: '{{ addslashes(old('new_group_name', '')) }}',
+                        }">
+                            <x-input-label :value="__('Kit Group (optional)')" />
+
+                            <template x-if="mode === 'select'">
+                                <div class="mt-1 flex gap-2">
+                                    <select x-model="groupId" name="kit_group_id"
+                                            class="flex-1 rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-red focus:ring-brand-red">
+                                        <option value="">— Not in a group —</option>
+                                        @foreach ($kitGroups as $group)
+                                            <option value="{{ $group->id }}">{{ $group->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" @click="mode = 'create'; groupId = ''"
+                                            class="shrink-0 px-3 py-2 rounded-xl bg-brand-navy text-white text-xs font-medium hover:bg-brand-red transition">
+                                        + New
+                                    </button>
+                                </div>
+                            </template>
+
+                            <template x-if="mode === 'create'">
+                                <div class="mt-1 flex gap-2">
+                                    <input x-model="newName" name="new_group_name" type="text" maxlength="100"
+                                           placeholder="New group name (e.g. Personal Set, Carabiners Bag A)"
+                                           class="flex-1 rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-red focus:ring-brand-red">
+                                    <button type="button" @click="mode = 'select'; newName = ''"
+                                            class="shrink-0 px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </template>
+
+                            {{-- Hidden kit_group_id when in create mode so the field still posts (empty) --}}
+                            <template x-if="mode === 'create'">
+                                <input type="hidden" name="kit_group_id" value="">
+                            </template>
+
+                            <x-input-error :messages="$errors->get('kit_group_id')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('new_group_name')" class="mt-2" />
+                            <p class="mt-1 text-xs text-gray-500">Use groups to organise equipment (e.g. a personal kit set, or a bag of carabiners).</p>
                         </div>
 
                         <div class="mb-6">
