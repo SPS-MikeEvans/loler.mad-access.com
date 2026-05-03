@@ -105,6 +105,23 @@
                                 <x-primary-button>Add Kit Type</x-primary-button>
                             </a>
                             @if(auth()->user()->isAdmin())
+                                <form method="POST" action="{{ route('kit-types.bulk-edit.form') }}">
+                                    @csrf
+                                    <template x-for="id in selected" :key="id">
+                                        <input type="hidden" name="kit_type_ids[]" :value="id">
+                                    </template>
+                                    <button type="submit"
+                                            x-bind:disabled="selected.length === 0"
+                                            class="inline-flex w-full items-center justify-center gap-2 px-4 py-2 rounded-xl bg-brand-navy text-white text-sm font-medium hover:bg-brand-red transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-navy">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                        Bulk Edit
+                                        <span x-show="selected.length > 0" x-cloak
+                                              class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-brand-red text-xs font-semibold"
+                                              x-text="selected.length"></span>
+                                    </button>
+                                </form>
                                 <form method="POST" action="{{ route('kit-types.ai-refresh') }}">
                                     @csrf
                                     <button type="submit"
@@ -123,6 +140,12 @@
                     @if ($kitTypes->isEmpty())
                         <p class="text-gray-500 italic">No kit types added yet.</p>
                     @else
+                        @if (auth()->user()->isAdmin())
+                            <p class="mb-3 text-xs text-gray-500">
+                                Tick one or more rows to bulk-edit inspection price, resource links, interval or the lifts-people flag. The
+                                <span class="font-medium text-brand-navy">Bulk Edit</span> button above (and the bar at the bottom) become active once at least one row is selected.
+                            </p>
+                        @endif
                         @php
                             /** @param string $col @param string $label */
                             $sortLink = function (string $col, string $label) use ($sort, $dir): string {
