@@ -11,6 +11,7 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobPhotoController;
 use App\Http\Controllers\JobSignatureController;
 use App\Http\Controllers\KitItemController;
+use App\Http\Controllers\KitTypeBulkEditController;
 use App\Http\Controllers\KitTypeController;
 use App\Http\Controllers\MobileInspectionController;
 use App\Http\Controllers\PhotoCaptureController;
@@ -35,6 +36,10 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
         ->name('kit-types.ai-refresh')
         ->middleware(['role:admin', 'throttle:5,60']);
     Route::resource('kit-types', KitTypeController::class)->except(['show']);
+
+    Route::post('/kit-types/bulk-edit', [KitTypeBulkEditController::class, 'form'])->name('kit-types.bulk-edit.form');
+    Route::post('/kit-types/bulk-edit/preview', [KitTypeBulkEditController::class, 'preview'])->name('kit-types.bulk-edit.preview');
+    Route::post('/kit-types/bulk-edit/apply', [KitTypeBulkEditController::class, 'apply'])->name('kit-types.bulk-edit.apply');
     Route::resource('clients.kit-items', KitItemController::class)->scoped();
     Route::resource('clients.kit-items.inspections', InspectionController::class)
         ->scoped()

@@ -62,7 +62,29 @@
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6" x-data="{ search: '', category: '' }">
+                <div class="p-6"
+                     x-data="{
+                        search: '',
+                        category: '',
+                        selected: [],
+                        isSelected(id) { return this.selected.includes(id) },
+                        toggle(id) {
+                            const i = this.selected.indexOf(id);
+                            if (i >= 0) this.selected.splice(i, 1); else this.selected.push(id);
+                        },
+                        clearSelection() { this.selected = [] },
+                        isVisible(name, brand, cat) {
+                            const haystack = (name + ' ' + (brand || '') + ' ' + (cat || '')).toLowerCase();
+                            return (this.search === '' || haystack.includes(this.search.toLowerCase()))
+                                && (this.category === '' || cat === this.category);
+                        },
+                        selectAllVisible() {
+                            const ids = [...document.querySelectorAll('tr[data-kit-type-row]')]
+                                .filter(tr => tr.style.display !== 'none' && tr.dataset.id)
+                                .map(tr => parseInt(tr.dataset.id));
+                            this.selected = ids;
+                        }
+                     }">
 
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                         <div class="flex flex-col sm:flex-row gap-3">
@@ -114,6 +136,12 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
+                                        @if (auth()->user()->isAdmin())
+                                            <th class="px-3 py-3 w-8">
+                                                <button type="button" @click="selectAllVisible()" title="Select all visible"
+                                                        class="text-xs text-brand-navy hover:text-brand-red font-medium">all</button>
+                                            </th>
+                                        @endif
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             {!! $sortLink('name', 'Name') !!}
                                         </th>
@@ -135,10 +163,19 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach ($kitTypes as $type)
                                         <tr class="hover:bg-gray-50"
+                                            data-kit-type-row
+                                            data-id="{{ $type->id }}"
                                             x-show="
                                                 (search === '' || '{{ strtolower(addslashes($type->name . ' ' . $type->brand . ' ' . $type->category)) }}'.includes(search.toLowerCase())) &&
                                                 (category === '' || '{{ addslashes($type->category) }}' === category)
                                             ">
+                                            @if (auth()->user()->isAdmin())
+                                                <td class="px-3 py-3 w-8 align-middle">
+                                                    <input type="checkbox" :checked="isSelected({{ $type->id }})"
+                                                           @click="toggle({{ $type->id }})"
+                                                           class="rounded border-gray-300 text-brand-red focus:ring-brand-red">
+                                                </td>
+                                            @endif
                                             <td class="px-4 py-3 font-medium text-gray-900 text-sm">
                                                 {{ $type->name }}
                                                 @if ($type->ai_suggested)
@@ -216,6 +253,33 @@
                                     :password-confirm="true"
                                 />
                             @endforeach
+
+                            {{-- Sticky bulk-edit action bar --}}
+                            <div x-show="selected.length > 0"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 translate-y-2"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-40 max-w-lg mx-auto sm:mx-0 bg-brand-navy text-white shadow-lg rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                                <span class="text-sm">
+                                    <span class="font-semibold" x-text="selected.length"></span>
+                                    <span x-text="selected.length === 1 ? 'kit type selected' : 'kit types selected'"></span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="clearSelection()"
+                                            class="text-xs text-white/80 hover:text-white underline">Clear</button>
+                                    <form method="POST" action="{{ route('kit-types.bulk-edit.form') }}">
+                                        @csrf
+                                        <template x-for="id in selected" :key="id">
+                                            <input type="hidden" name="kit_type_ids[]" :value="id">
+                                        </template>
+                                        <button type="submit"
+                                                class="px-3 py-1.5 rounded-lg bg-brand-red text-white text-sm font-medium hover:bg-red-700 transition">
+                                            Bulk Edit Selected →
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         @endif
                     @endif
                 </div>
