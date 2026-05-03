@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePortalKitItemRequest;
+use App\Http\Requests\UpdatePortalKitItemRequest;
 use App\Models\AuditLog;
 use App\Models\KitItem;
 use App\Models\KitType;
@@ -15,14 +16,43 @@ use Illuminate\View\View;
 
 class KitItemController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $client = auth()->user()->client;
-        $kitItems = $client
-            ? $client->kitItems()->with('kitType')->latest('created_at')->get()
-            : collect();
+        $search = $request->string('search')->trim()->toString();
+        $groupFilter = $request->string('group')->trim()->toString();
 
-        return view('portal.kit.index', compact('kitItems'));
+        if (! $client) {
+            return view('portal.kit.index', [
+                'kitItems' => collect(),
+                'kitGroups' => collect(),
+                'search' => $search,
+                'groupFilter' => $groupFilter,
+            ]);
+        }
+
+        $query = $client->kitItems()->with(['kitType', 'kitGroup']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('asset_tag', 'LIKE', "%{$search}%")
+                    ->orWhere('serial_no', 'LIKE', "%{$search}%")
+                    ->orWhere('custom_type_name', 'LIKE', "%{$search}%")
+                    ->orWhere('manufacturer', 'LIKE', "%{$search}%")
+                    ->orWhere('model', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($groupFilter === 'none') {
+            $query->whereNull('kit_group_id');
+        } elseif ($groupFilter !== '' && ctype_digit($groupFilter)) {
+            $query->where('kit_group_id', (int) $groupFilter);
+        }
+
+        $kitItems = $query->latest('created_at')->paginate(25)->withQueryString();
+        $kitGroups = $client->kitGroups()->orderBy('name')->get();
+
+        return view('portal.kit.index', compact('kitItems', 'kitGroups', 'search', 'groupFilter'));
     }
 
     public function create(): View
@@ -75,7 +105,7 @@ class KitItemController extends Controller
     public function show(KitItem $kitItem): View
     {
         $this->authorize('manage-own-kit', $kitItem);
-        $kitItem->load(['kitType', 'inspections' => fn ($q) => $q->complete()->latest('inspection_date')]);
+        $kitItem->load(['kitType', 'kitGroup', 'inspections' => fn ($q) => $q->complete()->latest('inspection_date')]);
         $retireConfirmation = ! $kitItem->pending_review && $kitItem->status !== 'retired'
             ? $this->issueConfirmedAction(
                 'retire.kit-item',
@@ -86,6 +116,44 @@ class KitItemController extends Controller
             : null;
 
         return view('portal.kit.show', compact('kitItem', 'retireConfirmation'));
+    }
+
+    public function edit(KitItem $kitItem): View
+    {
+        $this->authorize('manage-own-kit', $kitItem);
+
+        $kitItem->load(['kitType', 'kitGroup']);
+        $locked = $kitItem->hasInspections();
+        $kitTypes = KitType::orderBy('category')->orderBy('name')->get();
+        $kitGroups = $kitItem->client->kitGroups()->orderBy('name')->get();
+
+        return view('portal.kit.edit', compact('kitItem', 'locked', 'kitTypes', 'kitGroups'));
+    }
+
+    public function update(UpdatePortalKitItemRequest $request, KitItem $kitItem): RedirectResponse
+    {
+        $this->authorize('manage-own-kit', $kitItem);
+
+        $data = $kitItem->hasInspections()
+            ? collect($request->validated())->except(KitItem::LOCKED_FIELDS_AFTER_INSPECTION)->all()
+            : $request->validated();
+
+        if (array_key_exists('kit_group_id', $data) && $data['kit_group_id'] === '') {
+            $data['kit_group_id'] = null;
+        }
+
+        $kitItem->update($data);
+
+        AuditLog::record(
+            'updated',
+            'KitItem',
+            $kitItem->id,
+            'Client updated kit item '.($kitItem->asset_tag ?? "#{$kitItem->id}"),
+            ['changed_fields' => array_keys($kitItem->getChanges())]
+        );
+
+        return redirect()->route('portal.kit.show', $kitItem)
+            ->with('success', 'Equipment details updated.');
     }
 
     public function storeFlag(KitItem $kitItem, Request $request): RedirectResponse

@@ -20,6 +20,7 @@ class KitItem extends Model
 
     protected $fillable = [
         'client_id',
+        'kit_group_id',
         'kit_type_id',
         'custom_type_name',
         'asset_tag',
@@ -36,6 +37,16 @@ class KitItem extends Model
         'flagged_for_inspection',
         'flag_notes',
         'pending_review',
+    ];
+
+    /** @var list<string> */
+    public const LOCKED_FIELDS_AFTER_INSPECTION = [
+        'manufacturer',
+        'model',
+        'serial_no',
+        'first_use_date',
+        'purchase_date',
+        'kit_type_id',
     ];
 
     protected function casts(): array
@@ -71,6 +82,12 @@ class KitItem extends Model
         return $this->belongsTo(Client::class);
     }
 
+    /** @return BelongsTo<KitGroup, $this> */
+    public function kitGroup(): BelongsTo
+    {
+        return $this->belongsTo(KitGroup::class);
+    }
+
     /** @return BelongsTo<KitType, $this> */
     public function kitType(): BelongsTo
     {
@@ -104,5 +121,10 @@ class KitItem extends Model
     public function isCustomType(): bool
     {
         return $this->kit_type_id === null && $this->custom_type_name !== null;
+    }
+
+    public function hasInspections(): bool
+    {
+        return $this->inspections()->exists();
     }
 }

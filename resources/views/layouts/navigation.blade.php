@@ -43,6 +43,9 @@
                         <x-nav-link :href="route('portal.kit.index')" :active="request()->routeIs('portal.kit.*')">
                             {{ __('My Equipment') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('portal.kit-groups.index')" :active="request()->routeIs('portal.kit-groups.*')">
+                            {{ __('Kit Groups') }}
+                        </x-nav-link>
                         <x-nav-link :href="route('portal.jobs.index')" :active="request()->routeIs('portal.jobs.*')">
                             {{ __('My Jobs') }}
                         </x-nav-link>
@@ -138,6 +141,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('portal.kit.index')" :active="request()->routeIs('portal.kit.*')">
                     {{ __('My Equipment') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('portal.kit-groups.index')" :active="request()->routeIs('portal.kit-groups.*')">
+                    {{ __('Kit Groups') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('portal.jobs.index')" :active="request()->routeIs('portal.jobs.*')">
                     {{ __('My Jobs') }}

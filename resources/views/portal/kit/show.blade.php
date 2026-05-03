@@ -31,6 +31,12 @@
                             @else
                                 <p class="text-sm text-gray-500 italic">Custom equipment — pending type assignment</p>
                             @endif
+                            @if ($kitItem->kitGroup)
+                                <a href="{{ route('portal.kit-groups.show', $kitItem->kitGroup) }}"
+                                   class="mt-2 inline-block px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">
+                                    Group: {{ $kitItem->kitGroup->name }}
+                                </a>
+                            @endif
                         </div>
                         @php
                             $statusColour = match($kitItem->status) {
@@ -85,6 +91,12 @@
                             <p class="font-medium mb-1">Your inspection notes:</p>
                             <p>{{ $kitItem->flag_notes }}</p>
                         </div>
+                    @endif
+
+                    @if ($kitItem->status !== 'retired')
+                        <a href="{{ route('portal.kit.edit', $kitItem) }}">
+                            <x-secondary-button>Edit Equipment Details</x-secondary-button>
+                        </a>
                     @endif
                 </div>
             </div>

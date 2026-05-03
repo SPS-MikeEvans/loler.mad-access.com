@@ -42,6 +42,12 @@ class Client extends Model
         return $this->hasMany(KitItem::class);
     }
 
+    /** @return HasMany<KitGroup, $this> */
+    public function kitGroups(): HasMany
+    {
+        return $this->hasMany(KitGroup::class);
+    }
+
     /** @return HasMany<Invoice, $this> */
     public function invoices(): HasMany
     {

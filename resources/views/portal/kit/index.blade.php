@@ -15,7 +15,7 @@
             @endif
 
             <div class="mobile-card overflow-hidden sm:rounded-lg">
-                <div class="mobile-card-body overflow-x-hidden" x-data="{ search: '' }">
+                <div class="mobile-card-body overflow-x-hidden">
                     <div class="grid grid-cols-1 gap-3 mb-4 sm:flex sm:items-center sm:justify-between">
                         <h3 class="min-w-0 break-words pr-0 text-lg font-medium text-gray-900 sm:pr-4">My Equipment</h3>
                         <a href="{{ route('portal.kit.create') }}" class="w-full sm:w-auto">
@@ -23,15 +23,24 @@
                         </a>
                     </div>
 
-                    @if ($kitItems->isEmpty())
-                        <p class="text-gray-500 italic">No equipment added yet. <a href="{{ route('portal.kit.create') }}" class="text-brand-navy underline">Add your first item.</a></p>
-                    @else
-                        <div class="mb-4">
-                            <input x-model="search" type="search"
-                                placeholder="Filter by type, asset tag, serial number or status…"
-                                class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:w-80" />
-                        </div>
+                    <form method="GET" action="{{ route('portal.kit.index') }}" class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <input type="search" name="search" value="{{ $search }}"
+                            placeholder="Search asset tag, serial, model…"
+                            class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:col-span-2" />
+                        <select name="group"
+                            class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red"
+                            onchange="this.form.submit()">
+                            <option value="">All groups</option>
+                            <option value="none" @selected($groupFilter === 'none')>Ungrouped</option>
+                            @foreach ($kitGroups as $group)
+                                <option value="{{ $group->id }}" @selected((string) $group->id === $groupFilter)>{{ $group->name }}</option>
+                            @endforeach
+                        </select>
+                    </form>
 
+                    @if ($kitItems->isEmpty())
+                        <p class="text-gray-500 italic">No equipment matches. <a href="{{ route('portal.kit.create') }}" class="text-brand-navy underline">Add an item.</a></p>
+                    @else
                         {{-- Mobile card list --}}
                         <div class="block space-y-3 sm:hidden">
                             @foreach ($kitItems as $item)
@@ -44,17 +53,15 @@
                                         default          => 'bg-gray-100 text-gray-600',
                                     };
                                 @endphp
-                                <details class="mobile-list-card overflow-hidden group"
-                                    x-show="search === ''
-                                        || '{{ strtolower($item->typeName()) }}'.includes(search.toLowerCase())
-                                        || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
-                                        || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
-                                        || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
+                                <details class="mobile-list-card overflow-hidden group">
                                     <summary class="list-none cursor-pointer px-4 py-4">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="mobile-meta-label">Equipment Type</p>
                                                 <p class="mt-1 break-words text-base font-semibold text-slate-900">{{ $item->typeName() }}</p>
+                                                @if ($item->kitGroup)
+                                                    <p class="mt-0.5 text-xs text-slate-500">Group: {{ $item->kitGroup->name }}</p>
+                                                @endif
                                             </div>
                                             <svg class="mt-1 h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -96,6 +103,7 @@
 
                                         <div class="mobile-action-group">
                                             <a href="{{ route('portal.kit.show', $item) }}" class="mobile-action-link">View Details</a>
+                                            <a href="{{ route('portal.kit.edit', $item) }}" class="mobile-action-link">Edit</a>
                                         </div>
                                     </div>
                                 </details>
@@ -109,6 +117,7 @@
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset / Serial</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Inspection Due</th>
                                         <th class="px-6 py-3"></th>
@@ -125,14 +134,16 @@
                                                 default          => 'bg-gray-100 text-gray-600',
                                             };
                                         @endphp
-                                        <tr class="hover:bg-gray-50"
-                                            x-show="search === ''
-                                                || '{{ strtolower($item->typeName()) }}'.includes(search.toLowerCase())
-                                                || '{{ strtolower($item->asset_tag ?? '') }}'.includes(search.toLowerCase())
-                                                || '{{ strtolower($item->serial_no ?? '') }}'.includes(search.toLowerCase())
-                                                || '{{ strtolower($item->status) }}'.includes(search.toLowerCase())">
+                                        <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ $item->typeName() }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ $item->asset_tag ?? $item->serial_no ?? '—' }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">
+                                                @if ($item->kitGroup)
+                                                    <a href="{{ route('portal.kit-groups.show', $item->kitGroup) }}" class="text-brand-navy hover:text-brand-red">{{ $item->kitGroup->name }}</a>
+                                                @else
+                                                    <span class="text-gray-400">—</span>
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex flex-wrap gap-1">
                                                     @if ($item->pending_review)
@@ -150,14 +161,18 @@
                                             <td class="px-6 py-4 whitespace-nowrap {{ $item->next_inspection_due?->isPast() ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
                                                 {{ $item->next_inspection_due?->format('d M Y') ?? '—' }}
                                             </td>
-                                            <td class="px-6 py-4 text-right">
-                                                <a href="{{ route('portal.kit.show', $item) }}"
-                                                   class="text-sm text-brand-navy hover:text-brand-red font-medium">View</a>
+                                            <td class="px-6 py-4 text-right whitespace-nowrap text-sm">
+                                                <a href="{{ route('portal.kit.show', $item) }}" class="text-brand-navy hover:text-brand-red font-medium mr-3">View</a>
+                                                <a href="{{ route('portal.kit.edit', $item) }}" class="text-brand-navy hover:text-brand-red font-medium">Edit</a>
                                             </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div class="mt-4">
+                            {{ $kitItems->links() }}
                         </div>
                     @endif
                 </div>

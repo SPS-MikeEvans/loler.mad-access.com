@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\JobStatusChanged;
 use Database\Factories\JobFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,11 @@ class Job extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'inspection_jobs';
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'status' => 'draft',
+    ];
 
     protected $fillable = [
         'client_id',
@@ -61,6 +67,16 @@ class Job extends Model
             $seq = DB::table('inspection_job_sequences')->where('year', $year)->value('last_number');
             $job->job_number = sprintf('JOB-%d-%04d', $year, $seq);
             $job->bag_qr_code = (string) Str::uuid();
+        });
+
+        static::created(function (Job $job): void {
+            JobStatusChanged::dispatch($job, null, $job->status);
+        });
+
+        static::updated(function (Job $job): void {
+            if ($job->wasChanged('status')) {
+                JobStatusChanged::dispatch($job, $job->getOriginal('status'), $job->status);
+            }
         });
     }
 

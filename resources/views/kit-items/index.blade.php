@@ -29,14 +29,24 @@
                         </a>
                     </div>
 
+                    <form method="GET" action="{{ route('clients.kit-items.index', $client) }}" class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <input x-model="search" type="search"
+                            placeholder="Filter visible rows by type, asset tag, serial…"
+                            class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:col-span-2" />
+                        <select name="group"
+                            class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red"
+                            onchange="this.form.submit()">
+                            <option value="">All groups</option>
+                            <option value="none" @selected($groupFilter === 'none')>Ungrouped</option>
+                            @foreach ($kitGroups as $group)
+                                <option value="{{ $group->id }}" @selected((string) $group->id === $groupFilter)>{{ $group->name }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+
                     @if ($kitItems->isEmpty())
-                        <p class="text-gray-500 italic">No kit items added for this client yet.</p>
+                        <p class="text-gray-500 italic">No kit items match.</p>
                     @else
-                        <div class="mb-4">
-                            <input x-model="search" type="search"
-                                placeholder="Filter by type, asset tag, serial number or status…"
-                                class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:w-80" />
-                        </div>
 
                         <div class="block space-y-3 sm:hidden">
                             @foreach ($kitItems as $item)
@@ -129,6 +139,7 @@
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset / Serial</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Inspection Due</th>
                                         <th class="px-6 py-3"></th>
@@ -150,6 +161,9 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-gray-600">
                                                 {{ $item->asset_tag ?? $item->serial_no ?? '—' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">
+                                                {{ $item->kitGroup?->name ?? '—' }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @php

@@ -151,10 +151,19 @@ Route::prefix('portal')
         Route::patch('/kit/{kitItem}/retire', [Portal\KitItemController::class, 'retire'])->name('kit.retire');
         Route::patch('/kit/{kitItem}/custom-name', [Portal\KitItemController::class, 'updateCustomName'])->name('kit.updateCustomName');
 
+        Route::get('/kit/{kitItem}/edit', [Portal\KitItemController::class, 'edit'])->name('kit.edit');
+        Route::patch('/kit/{kitItem}', [Portal\KitItemController::class, 'update'])->name('kit.update');
+
         Route::get('/kit/{kitItem}/inspections', [Portal\InspectionController::class, 'index'])->name('inspections.index');
         Route::get('/inspections/{inspection}/pdf', [Portal\InspectionController::class, 'downloadPdf'])->name('inspections.pdf');
 
+        Route::resource('kit-groups', Portal\KitGroupController::class);
+
         Route::get('/jobs', [Portal\JobController::class, 'index'])->name('jobs.index');
+        Route::get('/jobs/create', [Portal\JobController::class, 'create'])->name('jobs.create');
+        Route::post('/jobs/create/date', [Portal\JobController::class, 'chooseDate'])->name('jobs.date');
+        Route::post('/jobs/create/review', [Portal\JobController::class, 'review'])->name('jobs.review');
+        Route::post('/jobs', [Portal\JobController::class, 'store'])->name('jobs.store');
         Route::get('/jobs/{job}', [Portal\JobController::class, 'show'])->name('jobs.show');
     });
 

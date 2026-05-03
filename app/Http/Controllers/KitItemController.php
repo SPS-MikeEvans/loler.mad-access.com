@@ -40,12 +40,20 @@ class KitItemController extends Controller
         return response()->json($items);
     }
 
-    public function index(Client $client): View
+    public function index(Client $client, Request $request): View
     {
-        $kitItems = $client->kitItems()
-            ->with('kitType')
-            ->orderBy('next_inspection_due')
-            ->get();
+        $groupFilter = $request->string('group')->trim()->toString();
+
+        $query = $client->kitItems()->with(['kitType', 'kitGroup']);
+
+        if ($groupFilter === 'none') {
+            $query->whereNull('kit_group_id');
+        } elseif ($groupFilter !== '' && ctype_digit($groupFilter)) {
+            $query->where('kit_group_id', (int) $groupFilter);
+        }
+
+        $kitItems = $query->orderBy('next_inspection_due')->get();
+        $kitGroups = $client->kitGroups()->orderBy('name')->get();
         $deleteConfirmations = auth()->user()?->isAdmin()
             ? $kitItems->mapWithKeys(fn (KitItem $item) => [
                 $item->id => $this->issueConfirmedAction(
@@ -57,7 +65,7 @@ class KitItemController extends Controller
             ])
             : collect();
 
-        return view('kit-items.index', compact('client', 'kitItems', 'deleteConfirmations'));
+        return view('kit-items.index', compact('client', 'kitItems', 'kitGroups', 'groupFilter', 'deleteConfirmations'));
     }
 
     public function create(Client $client): View
