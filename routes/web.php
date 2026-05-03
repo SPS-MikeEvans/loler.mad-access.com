@@ -102,6 +102,12 @@ Route::get('/bag/{bagQrCode}', [JobController::class, 'scanBag'])
     ->name('jobs.scan-bag')
     ->middleware('auth');
 
+// Role-aware dispatcher used in notification emails — sends client_viewers to
+// the portal and admin/inspector users to the back-office for the same job.
+Route::get('/jobs/view/{job}', [JobController::class, 'viewDispatch'])
+    ->name('jobs.view')
+    ->middleware('auth');
+
 Route::prefix('mobile/inspections')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/{kitItem}/start', [MobileInspectionController::class, 'start'])
         ->name('mobile.inspect.start');

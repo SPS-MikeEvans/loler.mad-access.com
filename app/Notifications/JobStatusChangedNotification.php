@@ -41,7 +41,7 @@ class JobStatusChangedNotification extends Notification
         }
 
         return $message
-            ->action('View Job', route('portal.jobs.show', $job))
+            ->action('View Job', route('jobs.view', $job))
             ->line('Thank you for using our LOLER inspection service.');
     }
 

@@ -187,6 +187,23 @@ class JobController extends Controller
         return redirect()->route('jobs.show', $job);
     }
 
+    public function viewDispatch(Job $job): RedirectResponse
+    {
+        $user = auth()->user();
+
+        if ($user->isClientViewer()) {
+            abort_if($job->client_id !== $user->client_id, 403);
+
+            return redirect()->route('portal.jobs.show', $job);
+        }
+
+        if ($user->isAdmin() || $user->isInspector()) {
+            return redirect()->route('jobs.show', $job);
+        }
+
+        abort(403);
+    }
+
     /** @param array<int> $kitItemIds @param array<int, string|null> $conditionNotes */
     private function syncKitItems(Job $job, array $kitItemIds, array $conditionNotes): void
     {
