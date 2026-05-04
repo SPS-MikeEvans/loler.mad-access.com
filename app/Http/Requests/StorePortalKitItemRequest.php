@@ -20,7 +20,11 @@ class StorePortalKitItemRequest extends FormRequest
         return [
             'kit_type_id' => ['nullable', 'exists:kit_types,id', 'required_without:custom_type_name'],
             'custom_type_name' => ['nullable', 'string', 'max:100', 'required_without:kit_type_id'],
-            'asset_tag' => ['nullable', 'string', 'max:100', 'unique:kit_items,asset_tag'],
+            'asset_tag' => ['nullable', 'string', 'max:100'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'asset_tag_prefix' => ['nullable', 'string', 'max:80'],
+            'asset_tag_start' => ['nullable', 'integer', 'min:0'],
+            'asset_tag_padding' => ['nullable', 'integer', 'min:1', 'max:6'],
             'serial_no' => ['nullable', 'string', 'max:100'],
             'manufacturer' => ['nullable', 'string', 'max:100'],
             'model' => ['nullable', 'string', 'max:100'],

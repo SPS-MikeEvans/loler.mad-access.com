@@ -19,7 +19,11 @@ class StoreKitItemRequest extends FormRequest
     {
         return [
             'kit_type_id' => ['required', 'exists:kit_types,id'],
-            'asset_tag' => ['nullable', 'string', 'max:100', 'unique:kit_items,asset_tag'],
+            'asset_tag' => ['nullable', 'string', 'max:100'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'asset_tag_prefix' => ['nullable', 'string', 'max:80'],
+            'asset_tag_start' => ['nullable', 'integer', 'min:0'],
+            'asset_tag_padding' => ['nullable', 'integer', 'min:1', 'max:6'],
             'manufacturer' => ['nullable', 'string', 'max:100'],
             'model' => ['nullable', 'string', 'max:100'],
             'serial_no' => ['nullable', 'string', 'max:100'],

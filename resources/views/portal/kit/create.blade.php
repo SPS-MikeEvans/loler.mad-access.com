@@ -258,6 +258,48 @@
                             <x-text-input id="serial_no" class="block mt-1 w-full" type="text" name="serial_no"
                                           :value="old('serial_no')" placeholder="Manufacturer's serial number" />
                             <x-input-error :messages="$errors->get('serial_no')" class="mt-2" />
+                            <p class="mt-1 text-xs text-gray-500">For block creation, serial numbers are left blank and can be edited later.</p>
+                        </div>
+
+                        <div class="mb-4 rounded-xl border border-gray-200 p-4">
+                            <h3 class="text-sm font-semibold text-gray-900">Block creation</h3>
+                            <p class="mt-1 text-xs text-gray-500">
+                                Use this for sets or lots. Quantity 1 keeps the normal single-item behavior.
+                            </p>
+
+                            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                                <div>
+                                    <x-input-label for="quantity" :value="__('Quantity')" />
+                                    <x-text-input id="quantity" name="quantity" type="number" min="1" max="100"
+                                                  class="block mt-1 w-full" :value="old('quantity', 1)" />
+                                    <x-input-error :messages="$errors->get('quantity')" class="mt-2" />
+                                </div>
+
+                                <div class="sm:col-span-3">
+                                    <x-input-label for="asset_tag_prefix" :value="__('Asset Tag Prefix (optional)')" />
+                                    <x-text-input id="asset_tag_prefix" name="asset_tag_prefix" type="text"
+                                                  class="block mt-1 w-full" :value="old('asset_tag_prefix')" placeholder="e.g. CAR-" />
+                                    <x-input-error :messages="$errors->get('asset_tag_prefix')" class="mt-2" />
+                                </div>
+
+                                <div>
+                                    <x-input-label for="asset_tag_start" :value="__('Start')" />
+                                    <x-text-input id="asset_tag_start" name="asset_tag_start" type="number" min="0"
+                                                  class="block mt-1 w-full" :value="old('asset_tag_start', 1)" />
+                                    <x-input-error :messages="$errors->get('asset_tag_start')" class="mt-2" />
+                                </div>
+
+                                <div>
+                                    <x-input-label for="asset_tag_padding" :value="__('Padding')" />
+                                    <x-text-input id="asset_tag_padding" name="asset_tag_padding" type="number" min="1" max="6"
+                                                  class="block mt-1 w-full" :value="old('asset_tag_padding', 3)" />
+                                    <x-input-error :messages="$errors->get('asset_tag_padding')" class="mt-2" />
+                                </div>
+                            </div>
+
+                            <p class="mt-3 text-xs text-gray-500">
+                                With prefix CAR-, start 1 and padding 3, a quantity of 10 creates CAR-001 to CAR-010. Leave the prefix blank for blank asset tags.
+                            </p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

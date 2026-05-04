@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Actions\CreateKitItemBlock;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePortalKitItemRequest;
 use App\Http\Requests\UpdatePortalKitItemRequest;
@@ -67,38 +68,39 @@ class KitItemController extends Controller
         return view('portal.kit.create', compact('kitTypes', 'categories', 'brands', 'kitGroups'));
     }
 
-    public function store(StorePortalKitItemRequest $request): RedirectResponse
+    public function store(StorePortalKitItemRequest $request, CreateKitItemBlock $createKitItemBlock): RedirectResponse
     {
         $client = auth()->user()->client;
         $validated = $request->validated();
-        $kitItem = null;
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $isBlock = $quantity > 1 || filled($validated['asset_tag_prefix'] ?? null);
 
-        DB::transaction(function () use ($client, &$validated, &$kitItem) {
-            if (! empty($validated['new_group_name'])) {
+        if (! $isBlock && ! empty($validated['new_group_name'])) {
+            DB::transaction(function () use ($client, &$validated) {
                 $group = $client->kitGroups()->create(['name' => $validated['new_group_name']]);
                 $validated['kit_group_id'] = $group->id;
                 AuditLog::record('created', 'KitGroup', $group->id, "Client created kit group {$group->name} via Add Equipment");
-            }
-            unset($validated['new_group_name']);
-
-            $kitItem = $client->kitItems()->create(array_merge(
-                $validated,
-                ['pending_review' => true]
-            ));
-        });
-
-        if ($kitItem->isCustomType()) {
-            $similar = KitType::whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($kitItem->custom_type_name).'%'])->first();
-            $note = $similar
-                ? "Client submitted custom item \"{$kitItem->custom_type_name}\" — possible match: {$similar->name} (ID {$similar->id})"
-                : "Client submitted custom item: {$kitItem->custom_type_name}";
-            AuditLog::record('created', 'KitItem', $kitItem->id, $note);
-        } else {
-            AuditLog::record('created', 'KitItem', $kitItem->id, "Client submitted new item: {$kitItem->asset_tag}");
+            });
         }
 
+        unset($validated['new_group_name']);
+
+        $kitItems = $createKitItemBlock->execute($client, $validated, pendingReview: true);
+
+        $kitItems->each(function (KitItem $kitItem) {
+            if ($kitItem->isCustomType()) {
+                $similar = KitType::whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($kitItem->custom_type_name).'%'])->first();
+                $note = $similar
+                    ? "Client submitted custom item \"{$kitItem->custom_type_name}\" — possible match: {$similar->name} (ID {$similar->id})"
+                    : "Client submitted custom item: {$kitItem->custom_type_name}";
+                AuditLog::record('created', 'KitItem', $kitItem->id, $note);
+            } else {
+                AuditLog::record('created', 'KitItem', $kitItem->id, "Client submitted new item: {$kitItem->asset_tag}");
+            }
+        });
+
         return redirect()->route('portal.kit.index')
-            ->with('success', 'Equipment submitted. Our team will review and activate it shortly.');
+            ->with('success', $kitItems->count().' equipment '.($kitItems->count() === 1 ? 'item' : 'items').' submitted. Our team will review and activate '.($kitItems->count() === 1 ? 'it' : 'them').' shortly.');
     }
 
     public function updateCustomName(KitItem $kitItem, Request $request): RedirectResponse

@@ -47,6 +47,45 @@ it('allows a client viewer to submit a new kit item with pending review status',
     expect(AuditLog::where('subject_id', $item->id)->where('action', 'created')->exists())->toBeTrue();
 });
 
+it('allows a client viewer to submit a block of normal kit items for review', function () {
+    [$client, $user, $kitType] = makePortalSetup('block-normal');
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'kit_type_id' => $kitType->id,
+            'quantity' => 3,
+            'asset_tag_prefix' => 'P-CAR-',
+            'asset_tag_start' => 7,
+            'asset_tag_padding' => 2,
+            'manufacturer' => 'DMM',
+        ])
+        ->assertRedirect(route('portal.kit.index'));
+
+    $items = KitItem::where('client_id', $client->id)->orderBy('asset_tag')->get();
+
+    expect($items)->toHaveCount(3);
+    expect($items->pluck('asset_tag')->all())->toBe(['P-CAR-07', 'P-CAR-08', 'P-CAR-09']);
+    expect($items->every(fn (KitItem $item) => $item->pending_review))->toBeTrue();
+});
+
+it('allows a client viewer to submit a block of custom kit items for review', function () {
+    [$client, $user] = makePortalSetup('block-custom');
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'custom_type_name' => 'Wire Strop Lot',
+            'quantity' => 2,
+            'asset_tag_prefix' => 'WS-',
+        ])
+        ->assertRedirect(route('portal.kit.index'));
+
+    $items = KitItem::where('client_id', $client->id)->orderBy('asset_tag')->get();
+
+    expect($items)->toHaveCount(2);
+    expect($items->pluck('custom_type_name')->unique()->all())->toBe(['Wire Strop Lot']);
+    expect($items->every(fn (KitItem $item) => $item->pending_review))->toBeTrue();
+});
+
 it('flags an item for inspection, stores notes, and notifies admins', function () {
     Notification::fake();
 

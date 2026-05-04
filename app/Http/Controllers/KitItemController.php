@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CreateKitItemBlock;
 use App\Http\Requests\StoreKitItemRequest;
 use App\Http\Requests\UpdateKitItemRequest;
 use App\Models\AuditLog;
@@ -9,7 +10,6 @@ use App\Models\Client;
 use App\Models\Job;
 use App\Models\KitItem;
 use App\Models\KitType;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -75,37 +75,31 @@ class KitItemController extends Controller
         return view('kit-items.create', compact('client', 'kitTypes'));
     }
 
-    public function store(StoreKitItemRequest $request, Client $client): RedirectResponse
+    public function store(StoreKitItemRequest $request, Client $client, CreateKitItemBlock $createKitItemBlock): RedirectResponse
     {
         $data = $request->validated();
-        $data['client_id'] = $client->id;
         $data['lifting_people'] = $request->boolean('lifting_people');
 
-        $kitType = KitType::find($data['kit_type_id']);
-        $startDate = $data['first_use_date'] ?? $data['purchase_date'] ?? null;
+        $kitItems = $createKitItemBlock->execute($client, $data);
 
-        if ($startDate) {
-            $intervalMonths = $data['lifting_people']
-                ? min(6, $kitType->interval_months)
-                : $kitType->interval_months;
-            $data['next_inspection_due'] = Carbon::parse($startDate)->addMonths($intervalMonths);
-        }
-
-        $kitItem = KitItem::create($data);
-        $kitItem->update(['qr_code' => route('clients.kit-items.show', [$client, $kitItem])]);
+        $kitItems->each(fn (KitItem $kitItem) => $kitItem->update([
+            'qr_code' => route('clients.kit-items.show', [$client, $kitItem]),
+        ]));
 
         if ($returnToJob = request()->query('return_to_job')) {
             $job = Job::find((int) $returnToJob);
-            if ($job && $job->client_id === $client->id) {
-                $job->kitItems()->syncWithoutDetaching([$kitItem->id]);
+            if ($job && $job->client_id === $client->id && in_array($job->status, ['draft', 'open', 'in_progress'], true)) {
+                $job->kitItems()->syncWithoutDetaching($kitItems->pluck('id')->all());
 
-                return redirect()->route('jobs.edit', $job)
-                    ->with('success', 'Kit item added and attached to job.');
+                $route = in_array($job->status, ['draft', 'open'], true) ? 'jobs.edit' : 'jobs.show';
+
+                return redirect()->route($route, $job)
+                    ->with('success', $kitItems->count().' kit '.($kitItems->count() === 1 ? 'item' : 'items').' added and attached to job.');
             }
         }
 
         return redirect()->route('clients.kit-items.index', $client)
-            ->with('success', 'Kit item added successfully.');
+            ->with('success', $kitItems->count().' kit '.($kitItems->count() === 1 ? 'item' : 'items').' added successfully.');
     }
 
     public function show(Client $client, KitItem $kitItem): View
