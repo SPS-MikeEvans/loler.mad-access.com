@@ -34,7 +34,7 @@
                         </div>
                     </div>
 
-                    <form method="GET" action="{{ route('clients.kit-items.index', $client) }}" class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <form method="GET" action="{{ route('clients.kit-items.index', $client) }}" class="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
                         <input x-model="search" type="search"
                             placeholder="Filter visible rows by type, asset tag, serial…"
                             class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red sm:col-span-2" />
@@ -46,6 +46,16 @@
                             @foreach ($kitGroups as $group)
                                 <option value="{{ $group->id }}" @selected((string) $group->id === $groupFilter)>{{ $group->name }}</option>
                             @endforeach
+                        </select>
+                        <select name="status"
+                            class="block w-full border-gray-300 rounded-xl shadow-sm text-sm focus:border-brand-red focus:ring-brand-red"
+                            onchange="this.form.submit()">
+                            <option value="">All statuses</option>
+                            <option value="in_service" @selected($statusFilter === 'in_service')>In Service</option>
+                            <option value="inspection_due" @selected($statusFilter === 'inspection_due')>Inspection Due</option>
+                            <option value="quarantined" @selected($statusFilter === 'quarantined')>Quarantined</option>
+                            <option value="retired" @selected($statusFilter === 'retired')>Retired</option>
+                            <option value="client_pending" @selected($statusFilter === 'client_pending')>Client Pending</option>
                         </select>
                     </form>
 

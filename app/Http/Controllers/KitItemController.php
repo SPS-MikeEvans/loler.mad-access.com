@@ -43,6 +43,12 @@ class KitItemController extends Controller
     public function index(Client $client, Request $request): View
     {
         $groupFilter = $request->string('group')->trim()->toString();
+        $validStatuses = ['in_service', 'inspection_due', 'quarantined', 'retired', 'client_pending'];
+        $statusFilter = $request->string('status')->trim()->toString();
+
+        if (! in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = '';
+        }
 
         $query = $client->kitItems()->with(['kitType', 'kitGroup']);
 
@@ -50,6 +56,10 @@ class KitItemController extends Controller
             $query->whereNull('kit_group_id');
         } elseif ($groupFilter !== '' && ctype_digit($groupFilter)) {
             $query->where('kit_group_id', (int) $groupFilter);
+        }
+
+        if ($statusFilter !== '') {
+            $query->where('status', $statusFilter);
         }
 
         $kitItems = $query->orderBy('next_inspection_due')->get();
@@ -65,7 +75,7 @@ class KitItemController extends Controller
             ])
             : collect();
 
-        return view('kit-items.index', compact('client', 'kitItems', 'kitGroups', 'groupFilter', 'deleteConfirmations'));
+        return view('kit-items.index', compact('client', 'kitItems', 'kitGroups', 'groupFilter', 'statusFilter', 'deleteConfirmations'));
     }
 
     public function create(Client $client): View

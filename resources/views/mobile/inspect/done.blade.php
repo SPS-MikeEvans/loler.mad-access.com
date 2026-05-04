@@ -55,6 +55,11 @@
                 </a>
             @endif
 
+            <a href="{{ route('clients.kit-items.index', ['client' => $inspection->kitItem->client, 'status' => 'inspection_due']) }}"
+               class="block w-full py-3.5 rounded-2xl bg-white text-brand-navy font-semibold text-sm border border-slate-200">
+                Back to Kit List
+            </a>
+
             <a href="{{ route('dashboard') }}"
                class="block w-full py-3.5 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm">
                 Back to Dashboard

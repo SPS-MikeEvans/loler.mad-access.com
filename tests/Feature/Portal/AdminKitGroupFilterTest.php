@@ -54,3 +54,70 @@ it('filters admin kit list by group id', function () {
         ->assertSee('IN-A')
         ->assertDontSee('IN-B');
 });
+
+it('filters admin kit list by status', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::create([
+        'name' => 'Status Filter Client',
+        'address' => '1 Status Street',
+        'contact_email' => 'status-filter@test.com',
+        'phone' => '01234567890',
+    ]);
+
+    $kitType = KitType::create(['name' => 'Status Rope', 'interval_months' => 6]);
+
+    KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'STATUS-DUE', 'status' => 'inspection_due']);
+    KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'STATUS-OK', 'status' => 'in_service']);
+
+    $this->actingAs($admin)
+        ->get(route('clients.kit-items.index', ['client' => $client, 'status' => 'inspection_due']))
+        ->assertOk()
+        ->assertSee('STATUS-DUE')
+        ->assertDontSee('STATUS-OK');
+});
+
+it('combines admin kit list group and status filters', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::create([
+        'name' => 'Combined Filter Client',
+        'address' => '1 Combined Street',
+        'contact_email' => 'combined-filter@test.com',
+        'phone' => '01234567890',
+    ]);
+
+    $kitType = KitType::create(['name' => 'Combined Rope', 'interval_months' => 6]);
+    $groupA = KitGroup::factory()->create(['client_id' => $client->id, 'name' => 'Combined A']);
+    $groupB = KitGroup::factory()->create(['client_id' => $client->id, 'name' => 'Combined B']);
+
+    KitItem::create(['client_id' => $client->id, 'kit_group_id' => $groupA->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'A-DUE', 'status' => 'inspection_due']);
+    KitItem::create(['client_id' => $client->id, 'kit_group_id' => $groupA->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'A-OK', 'status' => 'in_service']);
+    KitItem::create(['client_id' => $client->id, 'kit_group_id' => $groupB->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'B-DUE', 'status' => 'inspection_due']);
+
+    $this->actingAs($admin)
+        ->get(route('clients.kit-items.index', ['client' => $client, 'group' => $groupA->id, 'status' => 'inspection_due']))
+        ->assertOk()
+        ->assertSee('A-DUE')
+        ->assertDontSee('A-OK')
+        ->assertDontSee('B-DUE');
+});
+
+it('ignores invalid admin kit list status filters', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::create([
+        'name' => 'Invalid Status Filter Client',
+        'address' => '1 Invalid Street',
+        'contact_email' => 'invalid-status-filter@test.com',
+        'phone' => '01234567890',
+    ]);
+
+    $kitType = KitType::create(['name' => 'Invalid Status Rope', 'interval_months' => 6]);
+
+    KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'INVALID-DUE', 'status' => 'inspection_due']);
+    KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'INVALID-OK', 'status' => 'in_service']);
+
+    $this->actingAs($admin)
+        ->get(route('clients.kit-items.index', ['client' => $client, 'status' => 'not-a-status']))
+        ->assertOk()
+        ->assertSee('INVALID-DUE')
+        ->assertSee('INVALID-OK');
+});
