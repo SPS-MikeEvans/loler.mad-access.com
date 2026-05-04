@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CreateClientPortalUser;
+use App\Actions\SendClientPortalWelcome;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Models\AuditLog;
@@ -13,8 +14,10 @@ use Illuminate\View\View;
 
 class ClientController extends Controller
 {
-    public function __construct(private readonly CreateClientPortalUser $portalAction)
-    {
+    public function __construct(
+        private readonly CreateClientPortalUser $portalAction,
+        private readonly SendClientPortalWelcome $welcomeAction,
+    ) {
         // Laravel's default password confirmation window is 3 hours.
         // We can tighten this later with custom middleware if needed.
         $this->middleware(['role:admin', 'password.confirm', 'throttle:destructive-actions'])->only('destroy');
@@ -64,6 +67,19 @@ class ClientController extends Controller
             : null;
 
         return view('clients.show', compact('client', 'deleteConfirmation'));
+    }
+
+    public function resendWelcome(Client $client): RedirectResponse
+    {
+        $user = $this->welcomeAction->execute($client);
+
+        if (! $user) {
+            return redirect()->route('clients.show', $client)
+                ->with('error', 'No welcome email was sent because the client contact email is already used by another user.');
+        }
+
+        return redirect()->route('clients.show', $client)
+            ->with('success', "Welcome email sent to {$user->email}.");
     }
 
     public function edit(Client $client): View

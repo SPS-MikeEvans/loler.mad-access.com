@@ -24,9 +24,14 @@
                 <div class="mobile-card-body overflow-x-hidden" x-data="{ search: '' }">
                     <div class="grid grid-cols-1 gap-3 mb-4 sm:flex sm:items-center sm:justify-between">
                         <h3 class="min-w-0 break-words pr-0 text-lg font-medium text-gray-900 sm:pr-4">Equipment — {{ $client->name }}</h3>
-                        <a href="{{ route('clients.kit-items.create', $client) }}" class="w-full sm:w-auto">
-                            <x-primary-button class="w-full justify-center sm:w-auto">Add Kit Item</x-primary-button>
-                        </a>
+                        <div class="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:justify-end">
+                            <a href="{{ route('clients.kit-groups.index', $client) }}" class="w-full sm:w-auto">
+                                <x-secondary-button class="w-full justify-center sm:w-auto">Kit Groups</x-secondary-button>
+                            </a>
+                            <a href="{{ route('clients.kit-items.create', $client) }}" class="w-full sm:w-auto">
+                                <x-primary-button class="w-full justify-center sm:w-auto">Add Kit Item</x-primary-button>
+                            </a>
+                        </div>
                     </div>
 
                     <form method="GET" action="{{ route('clients.kit-items.index', $client) }}" class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">

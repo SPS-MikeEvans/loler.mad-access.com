@@ -10,6 +10,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobPhotoController;
 use App\Http\Controllers\JobSignatureController;
+use App\Http\Controllers\KitGroupController;
 use App\Http\Controllers\KitItemController;
 use App\Http\Controllers\KitTypeBulkEditController;
 use App\Http\Controllers\KitTypeController;
@@ -32,6 +33,8 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 
 Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function () {
     Route::resource('clients', ClientController::class);
+    Route::post('/clients/{client}/resend-welcome', [ClientController::class, 'resendWelcome'])
+        ->name('clients.resend-welcome');
     Route::post('/kit-types/ai-refresh', [KitTypeController::class, 'refresh'])
         ->name('kit-types.ai-refresh')
         ->middleware(['role:admin', 'throttle:5,60']);
@@ -41,6 +44,7 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
     Route::post('/kit-types/bulk-edit/preview', [KitTypeBulkEditController::class, 'preview'])->name('kit-types.bulk-edit.preview');
     Route::post('/kit-types/bulk-edit/apply', [KitTypeBulkEditController::class, 'apply'])->name('kit-types.bulk-edit.apply');
     Route::resource('clients.kit-items', KitItemController::class)->scoped();
+    Route::resource('clients.kit-groups', KitGroupController::class)->scoped();
     Route::resource('clients.kit-items.inspections', InspectionController::class)
         ->scoped()
         ->only(['index', 'create', 'store', 'show']);

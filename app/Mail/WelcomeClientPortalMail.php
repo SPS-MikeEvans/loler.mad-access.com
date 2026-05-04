@@ -17,7 +17,8 @@ class WelcomeClientPortalMail extends Mailable
     public function __construct(
         public Client $client,
         public User $user,
-        public string $temporaryPassword
+        public string $temporaryPassword,
+        public string $purpose = 'created',
     ) {}
 
     public function envelope(): Envelope

@@ -1,9 +1,13 @@
 <x-mail::message>
-# Welcome to Your Client Portal
+# {{ $purpose === 'reset' ? 'Your Client Portal Access Has Been Reset' : 'Welcome to Your Client Portal' }}
 
 Dear {{ $client->contact_name }},
 
+@if ($purpose === 'reset')
+Your client portal access for **{{ $client->name }}** has been reset. Use the temporary password below to log in.
+@else
 A client portal account has been created for **{{ $client->name }}**. You can use this portal to view your equipment list, flag items for inspection, and download LOLER certificates.
+@endif
 
 **Your login details are:**
 
