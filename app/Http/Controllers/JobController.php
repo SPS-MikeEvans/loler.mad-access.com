@@ -6,10 +6,12 @@ use App\Http\Requests\StoreJobRequest;
 use App\Http\Requests\UpdateJobRequest;
 use App\Models\AuditLog;
 use App\Models\Client;
+use App\Models\Inspection;
 use App\Models\Job;
 use App\Models\KitItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -81,6 +83,19 @@ class JobController extends Controller
 
         $progress = $job->inspectionProgress();
 
+        // For "Mark done" — collect each kit item's complete inspections that
+        // are not yet linked to any job, so the admin can attach a pre-job one.
+        $availablePreJobInspections = collect();
+        if (in_array($job->status, ['open', 'in_progress'], true)) {
+            $kitItemIds = $job->kitItems->pluck('id');
+            $availablePreJobInspections = Inspection::whereIn('kit_item_id', $kitItemIds)
+                ->whereNull('inspection_job_id')
+                ->where('status', 'complete')
+                ->orderByDesc('inspection_date')
+                ->get()
+                ->groupBy('kit_item_id');
+        }
+
         $qrSvg = QrCode::format('svg')->size(200)->errorCorrection('H')
             ->generate(route('jobs.scan-bag', $job->bag_qr_code));
 
@@ -88,7 +103,7 @@ class JobController extends Controller
             ? $this->issueConfirmedAction('delete.job', 'Job', $job->id, "DELETE-JOB-{$job->id}")
             : null;
 
-        return view('jobs.show', compact('job', 'progress', 'qrSvg', 'deleteConfirmation'));
+        return view('jobs.show', compact('job', 'progress', 'qrSvg', 'deleteConfirmation', 'availablePreJobInspections'));
     }
 
     public function edit(Job $job): View|RedirectResponse
@@ -123,6 +138,78 @@ class JobController extends Controller
 
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Job updated.');
+    }
+
+    public function markItemDone(Request $request, Job $job, KitItem $kitItem): RedirectResponse
+    {
+        if (! in_array($job->status, ['open', 'in_progress'], true)) {
+            return back()->with('error', 'Items can only be marked done while the job is Open or In Progress.');
+        }
+
+        if ($job->client_id !== $kitItem->client_id) {
+            abort(403);
+        }
+
+        if (! $job->kitItems()->where('kit_item_id', $kitItem->id)->exists()) {
+            abort(404);
+        }
+
+        if (Inspection::where('kit_item_id', $kitItem->id)->where('inspection_job_id', $job->id)->exists()) {
+            return back()->with('error', "{$kitItem->typeName()} is already linked to an inspection on this job.");
+        }
+
+        $validated = $request->validate([
+            'inspection_id' => ['nullable', 'integer'],
+        ]);
+
+        $query = Inspection::where('kit_item_id', $kitItem->id)
+            ->whereNull('inspection_job_id')
+            ->where('status', 'complete');
+
+        $inspection = ! empty($validated['inspection_id'])
+            ? $query->where('id', $validated['inspection_id'])->first()
+            : $query->latest('inspection_date')->first();
+
+        if (! $inspection) {
+            return back()->with(
+                'error',
+                "No completed pre-job inspection found for {$kitItem->typeName()}. Record an inspection first, then try again."
+            );
+        }
+
+        DB::transaction(function () use ($job, $kitItem, $inspection) {
+            $inspection->update(['inspection_job_id' => $job->id]);
+
+            // Manual auto-transition. The Inspection observer only fires the
+            // job transition when status is dirtied, so we replicate it here
+            // for the link-only update.
+            if ($job->status === 'open' && $job->canTransitionTo('in_progress')) {
+                $job->update(['status' => 'in_progress']);
+            }
+
+            $progress = $job->fresh()->inspectionProgress();
+            if ($progress['total'] > 0
+                && $progress['done'] >= $progress['total']
+                && $job->fresh()->canTransitionTo('complete')
+            ) {
+                $job->fresh()->update(['status' => 'complete']);
+            }
+
+            AuditLog::record(
+                'updated',
+                'Inspection',
+                $inspection->id,
+                "Linked pre-job inspection to job {$job->job_number} ({$kitItem->typeName()})",
+                [
+                    'job_id' => $job->id,
+                    'kit_item_id' => $kitItem->id,
+                    'inspection_date' => $inspection->inspection_date?->toDateString(),
+                ]
+            );
+        });
+
+        return redirect()->route('jobs.show', $job)
+            ->with('success', "{$kitItem->typeName()} marked as done using inspection from {$inspection->inspection_date?->format('d M Y')}.");
     }
 
     public function destroy(Request $request, Job $job): RedirectResponse

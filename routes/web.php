@@ -73,6 +73,8 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
 
     // Jobs (manifests / work orders)
     Route::resource('jobs', JobController::class);
+    Route::post('jobs/{job}/kit-items/{kitItem}/mark-done', [JobController::class, 'markItemDone'])
+        ->name('jobs.kit-items.mark-done');
     Route::get('jobs/{job}/bag-label', [JobController::class, 'bagLabel'])->name('jobs.bag-label');
     Route::get('jobs/{job}/sign-drop-off', [JobSignatureController::class, 'showDropOff'])->name('jobs.sign-drop-off');
     Route::post('jobs/{job}/sign-drop-off', [JobSignatureController::class, 'captureDropOff'])->name('jobs.capture-drop-off');

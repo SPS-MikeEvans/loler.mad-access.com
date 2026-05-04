@@ -176,6 +176,10 @@
                                                 'conditional' => 'text-yellow-600',
                                                 default => 'text-gray-400',
                                             };
+                                            $availableForItem = $availablePreJobInspections->get($item->id, collect());
+                                            $canMarkDone = ! $jobInspection
+                                                && in_array($job->status, ['open', 'in_progress'], true);
+                                            $modalName = "mark-done-{$item->id}";
                                         @endphp
                                         <tr>
                                             <td class="px-4 py-3 font-medium text-gray-900">{{ $item->typeName() }}</td>
@@ -193,7 +197,35 @@
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-gray-500 max-w-xs">{{ $item->pivot->condition_notes ?: '—' }}</td>
-                                            <td class="px-4 py-3 text-right">
+                                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                                @if ($canMarkDone)
+                                                    @if ($availableForItem->count() === 1)
+                                                        {{-- Exactly one unlinked inspection: one-click POST --}}
+                                                        <form method="POST" action="{{ route('jobs.kit-items.mark-done', [$job, $item]) }}" class="inline">
+                                                            @csrf
+                                                            <input type="hidden" name="inspection_id" value="{{ $availableForItem->first()->id }}">
+                                                            <button type="submit"
+                                                                    title="Link inspection from {{ $availableForItem->first()->inspection_date?->format('d M Y') }}"
+                                                                    class="text-green-700 hover:text-green-900 text-xs font-medium mr-3">
+                                                                Mark done
+                                                            </button>
+                                                        </form>
+                                                    @elseif ($availableForItem->count() > 1)
+                                                        {{-- Multiple unlinked inspections: open picker modal --}}
+                                                        <button type="button"
+                                                                x-data
+                                                                x-on:click="$dispatch('open-modal', '{{ $modalName }}')"
+                                                                class="text-green-700 hover:text-green-900 text-xs font-medium mr-3">
+                                                            Mark done…
+                                                        </button>
+                                                    @else
+                                                        {{-- No unlinked inspections available --}}
+                                                        <span class="text-xs text-gray-400 mr-3 cursor-not-allowed"
+                                                              title="No completed pre-job inspection found for this item.">
+                                                            Mark done
+                                                        </span>
+                                                    @endif
+                                                @endif
                                                 <a href="{{ route('clients.kit-items.show', [$job->client, $item]) }}"
                                                    class="text-brand-navy hover:text-brand-red text-xs font-medium">View →</a>
                                             </td>
@@ -281,4 +313,46 @@
             :password-confirm="true"
         />
     @endif
+
+    {{-- Mark-done picker modals (only for items with multiple unlinked inspections) --}}
+    @foreach ($job->kitItems as $item)
+        @php $available = $availablePreJobInspections->get($item->id, collect()); @endphp
+        @if ($available->count() > 1 && in_array($job->status, ['open', 'in_progress'], true) && $item->inspections->isEmpty())
+            <x-modal :name="'mark-done-'.$item->id" maxWidth="md" focusable>
+                <form method="POST" action="{{ route('jobs.kit-items.mark-done', [$job, $item]) }}" class="p-6 space-y-4">
+                    @csrf
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Mark item done</h2>
+                        <p class="mt-1 text-sm text-gray-600">
+                            {{ $item->typeName() }} has {{ $available->count() }} completed inspections that aren't linked to a job. Pick which one applies to this job.
+                        </p>
+                    </div>
+
+                    <div>
+                        <x-input-label :for="'inspection-pick-'.$item->id" value="Inspection to link" />
+                        <select :id="'inspection-pick-'.$item->id" name="inspection_id" required
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm focus:border-brand-red focus:ring-brand-red">
+                            @foreach ($available as $insp)
+                                <option value="{{ $insp->id }}">
+                                    {{ $insp->inspection_date?->format('d M Y') ?? '—' }}
+                                    · {{ ucfirst($insp->overall_status ?? '—') }}
+                                    @if ($insp->inspector?->name)
+                                        · {{ $insp->inspector->name }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <x-secondary-button type="button"
+                                            x-on:click="$dispatch('close-modal', 'mark-done-{{ $item->id }}')">
+                            Cancel
+                        </x-secondary-button>
+                        <x-primary-button>Link to this Job</x-primary-button>
+                    </div>
+                </form>
+            </x-modal>
+        @endif
+    @endforeach
 </x-app-layout>
