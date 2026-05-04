@@ -12,6 +12,7 @@ use App\Models\KitItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -82,6 +83,17 @@ class JobController extends Controller
         $job->load(['client', 'kitItems.kitType', 'kitItems.inspections' => fn ($q) => $q->where('inspection_job_id', $job->id), 'inspections', 'photos.uploadedBy', 'createdBy']);
 
         $progress = $job->inspectionProgress();
+        $addableKitItems = collect();
+
+        if (in_array($job->status, ['draft', 'open', 'in_progress'], true)) {
+            $attachedIds = $job->kitItems->pluck('id');
+            $addableKitItems = KitItem::where('client_id', $job->client_id)
+                ->whereNotIn('status', ['retired'])
+                ->whereNotIn('id', $attachedIds)
+                ->with('kitType')
+                ->orderBy('id')
+                ->get();
+        }
 
         // For "Mark done" — collect each kit item's complete inspections that
         // are not yet linked to any job, so the admin can attach a pre-job one.
@@ -103,7 +115,7 @@ class JobController extends Controller
             ? $this->issueConfirmedAction('delete.job', 'Job', $job->id, "DELETE-JOB-{$job->id}")
             : null;
 
-        return view('jobs.show', compact('job', 'progress', 'qrSvg', 'deleteConfirmation', 'availablePreJobInspections'));
+        return view('jobs.show', compact('job', 'progress', 'qrSvg', 'deleteConfirmation', 'availablePreJobInspections', 'addableKitItems'));
     }
 
     public function edit(Job $job): View|RedirectResponse
@@ -113,14 +125,19 @@ class JobController extends Controller
                 ->with('error', 'Items can only be edited while the job is in draft or open status.');
         }
 
-        $job->load(['client', 'kitItems']);
+        $job->load(['client', 'kitItems.inspections' => fn ($q) => $q->where('inspection_job_id', $job->id)]);
         $clientKitItems = KitItem::where('client_id', $job->client_id)
             ->whereNotIn('status', ['retired'])
             ->with('kitType')
             ->orderBy('id')
             ->get();
 
-        return view('jobs.edit', compact('job', 'clientKitItems'));
+        $lockedKitItemIds = $job->kitItems
+            ->filter(fn (KitItem $item) => $item->inspections->isNotEmpty())
+            ->pluck('id')
+            ->all();
+
+        return view('jobs.edit', compact('job', 'clientKitItems', 'lockedKitItemIds'));
     }
 
     public function update(UpdateJobRequest $request, Job $job): RedirectResponse
@@ -131,13 +148,66 @@ class JobController extends Controller
         }
 
         $data = $request->validated();
+        $kitItemIds = collect($data['kit_item_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $lockedItemIds = Inspection::where('inspection_job_id', $job->id)
+            ->pluck('kit_item_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $removedLockedIds = array_values(array_diff($lockedItemIds, $kitItemIds));
+        if (! empty($removedLockedIds)) {
+            return back()
+                ->withInput()
+                ->with('error', 'Items with inspections linked to this job cannot be removed.');
+        }
 
         $job->update(['notes' => $data['notes'] ?? null]);
 
-        $this->syncKitItems($job, $data['kit_item_ids'] ?? [], $data['condition_notes'] ?? []);
+        $this->syncKitItems($job, $kitItemIds, $data['condition_notes'] ?? []);
 
         return redirect()->route('jobs.show', $job)
             ->with('success', 'Job updated.');
+    }
+
+    public function addKitItems(Request $request, Job $job): RedirectResponse
+    {
+        if (! in_array($job->status, ['draft', 'open', 'in_progress'], true)) {
+            return redirect()->route('jobs.show', $job)
+                ->with('error', 'Kit can only be added while the job is Draft, Open or In Progress.');
+        }
+
+        $data = $request->validate([
+            'kit_item_ids' => ['required', 'array', 'min:1'],
+            'kit_item_ids.*' => [
+                'integer',
+                Rule::exists('kit_items', 'id')
+                    ->where('client_id', $job->client_id)
+                    ->where('status', '!=', 'retired'),
+            ],
+        ]);
+
+        $itemIds = collect($data['kit_item_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $attachData = $itemIds->mapWithKeys(fn (int $id) => [
+            $id => ['condition_notes' => null],
+        ])->all();
+
+        $job->kitItems()->syncWithoutDetaching($attachData);
+
+        AuditLog::record(
+            'updated',
+            'Job',
+            $job->id,
+            "Added kit items to job {$job->job_number}",
+            ['kit_item_ids_added' => $itemIds->all()]
+        );
+
+        return redirect()->route('jobs.show', $job)
+            ->with('success', $itemIds->count().' kit '.($itemIds->count() === 1 ? 'item' : 'items').' added to the job.');
     }
 
     public function markItemDone(Request $request, Job $job, KitItem $kitItem): RedirectResponse
@@ -216,9 +286,11 @@ class JobController extends Controller
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
 
-        if ($job->status !== 'returned') {
+        $hasEvidence = $this->jobHasOperationalEvidence($job);
+
+        if ($job->status !== 'returned' && $hasEvidence) {
             return redirect()->route('jobs.show', $job)
-                ->with('error', 'Only returned jobs may be deleted.');
+                ->with('error', 'This job has inspections, photos or signatures and cannot be deleted until items are returned.');
         }
 
         if ($job->inspections()->whereNotIn('status', ['complete'])->exists()) {
@@ -298,10 +370,22 @@ class JobController extends Controller
 
         foreach ($kitItemIds as $index => $kitItemId) {
             $syncData[(int) $kitItemId] = [
-                'condition_notes' => $conditionNotes[$index] ?? null,
+                'condition_notes' => $conditionNotes[$kitItemId] ?? $conditionNotes[$index] ?? null,
             ];
         }
 
         $job->kitItems()->sync($syncData);
+    }
+
+    private function jobHasOperationalEvidence(Job $job): bool
+    {
+        return $job->inspections()->exists()
+            || $job->photos()->exists()
+            || filled($job->drop_off_signature_path)
+            || filled($job->drop_off_signed_by)
+            || filled($job->drop_off_at)
+            || filled($job->return_signature_path)
+            || filled($job->return_signed_by)
+            || filled($job->return_at);
     }
 }

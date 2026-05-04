@@ -99,6 +99,15 @@
                             </a>
                         @endif
 
+                        @if (in_array($job->status, ['draft', 'open', 'in_progress']))
+                            <x-secondary-button
+                                type="button"
+                                x-data
+                                x-on:click="$dispatch('open-modal', 'add-kit-to-job')">
+                                Add Kit
+                            </x-secondary-button>
+                        @endif
+
                         @if (in_array($job->status, ['draft', 'open']))
                             <a href="{{ route('jobs.sign-drop-off', $job) }}">
                                 <x-primary-button>Sign Drop-Off</x-primary-button>
@@ -312,6 +321,53 @@
             submit-label="Delete Job"
             :password-confirm="true"
         />
+    @endif
+
+    @if (in_array($job->status, ['draft', 'open', 'in_progress']))
+        <x-modal name="add-kit-to-job" maxWidth="lg" focusable>
+            <form method="POST" action="{{ route('jobs.kit-items.store', $job) }}" class="p-6 space-y-5">
+                @csrf
+
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Add kit to {{ $job->job_number }}</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Select active kit from {{ $job->client->name }} that is not already on this job.
+                    </p>
+                </div>
+
+                @if ($addableKitItems->isEmpty())
+                    <p class="text-sm text-gray-500 italic">No additional active kit is available for this client.</p>
+                @else
+                    <div class="max-h-80 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                        @foreach ($addableKitItems as $item)
+                            <label class="flex items-start gap-3 rounded px-2 py-1.5 hover:bg-gray-50">
+                                <input type="checkbox"
+                                       name="kit_item_ids[]"
+                                       value="{{ $item->id }}"
+                                       class="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red">
+                                <span class="text-sm text-gray-800">
+                                    <span class="font-medium">{{ $item->typeName() }}</span>
+                                    <span class="text-gray-500">- {{ $item->asset_tag ?? $item->serial_no ?? "#{$item->id}" }}</span>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <x-input-error :messages="$errors->get('kit_item_ids')" class="mt-2" />
+                    <x-input-error :messages="$errors->get('kit_item_ids.*')" class="mt-2" />
+                @endif
+
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                    <button type="button"
+                            x-on:click="$dispatch('close-modal', 'add-kit-to-job')"
+                            class="text-sm text-gray-600 hover:text-gray-900">
+                        Cancel
+                    </button>
+                    @if ($addableKitItems->isNotEmpty())
+                        <x-primary-button>Add Selected Kit</x-primary-button>
+                    @endif
+                </div>
+            </form>
+        </x-modal>
     @endif
 
     {{-- Mark-done picker modals (only for items with multiple unlinked inspections) --}}

@@ -4,6 +4,7 @@ use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\Inspection;
 use App\Models\Job;
+use App\Models\JobPhoto;
 use App\Models\KitItem;
 use App\Models\KitType;
 use App\Models\User;
@@ -118,6 +119,105 @@ it('allows editing a draft job', function () {
         ->assertOk();
 });
 
+it('adds client kit to an open job', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Open Job Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $client->id, 'status' => 'open']);
+    $item = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'ADD-OPEN', 'status' => 'in_service']);
+
+    $this->actingAs($admin)
+        ->post(route('jobs.kit-items.store', $job), [
+            'kit_item_ids' => [$item->id],
+        ])
+        ->assertRedirect(route('jobs.show', $job));
+
+    expect($job->kitItems()->where('kit_items.id', $item->id)->exists())->toBeTrue();
+});
+
+it('adds client kit to an in progress job without changing status or existing items', function () {
+    $inspector = User::factory()->create(['role' => 'inspector']);
+    $client = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Progress Job Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $client->id, 'status' => 'in_progress']);
+    $existing = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'EXISTING', 'status' => 'in_service']);
+    $new = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'NEW', 'status' => 'in_service']);
+    $job->kitItems()->attach($existing->id);
+
+    $this->actingAs($inspector)
+        ->post(route('jobs.kit-items.store', $job), [
+            'kit_item_ids' => [$new->id],
+        ])
+        ->assertRedirect(route('jobs.show', $job));
+
+    expect($job->fresh()->status)->toBe('in_progress');
+    expect($job->kitItems()->where('kit_items.id', $existing->id)->exists())->toBeTrue();
+    expect($job->kitItems()->where('kit_items.id', $new->id)->exists())->toBeTrue();
+});
+
+it('rejects adding cross-client kit to a job', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $clientA = Client::factory()->create();
+    $clientB = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Cross Client Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $clientA->id, 'status' => 'open']);
+    $otherClientItem = KitItem::create(['client_id' => $clientB->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'WRONG', 'status' => 'in_service']);
+
+    $this->actingAs($admin)
+        ->post(route('jobs.kit-items.store', $job), [
+            'kit_item_ids' => [$otherClientItem->id],
+        ])
+        ->assertSessionHasErrors('kit_item_ids.0');
+
+    expect($job->kitItems()->count())->toBe(0);
+});
+
+it('does not create duplicate job kit rows when adding duplicate submissions', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Duplicate Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $client->id, 'status' => 'open']);
+    $item = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'DUP', 'status' => 'in_service']);
+    $job->kitItems()->attach($item->id);
+
+    $this->actingAs($admin)
+        ->post(route('jobs.kit-items.store', $job), [
+            'kit_item_ids' => [$item->id, $item->id],
+        ])
+        ->assertRedirect(route('jobs.show', $job));
+
+    expect($job->kitItems()->where('kit_items.id', $item->id)->count())->toBe(1);
+});
+
+it('prevents removing a job item that already has a linked inspection', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Locked Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $client->id, 'status' => 'draft']);
+    $locked = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'LOCKED', 'status' => 'in_service']);
+    $other = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'OTHER', 'status' => 'in_service']);
+    $job->kitItems()->sync([$locked->id => ['condition_notes' => null], $other->id => ['condition_notes' => null]]);
+
+    Inspection::create([
+        'kit_item_id' => $locked->id,
+        'inspector_user_id' => $admin->id,
+        'inspection_job_id' => $job->id,
+        'status' => 'complete',
+        'inspection_date' => now()->toDateString(),
+        'next_due_date' => now()->addMonths(6)->toDateString(),
+        'overall_status' => 'pass',
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('jobs.update', $job), [
+            'kit_item_ids' => [$other->id],
+        ])
+        ->assertRedirect();
+
+    expect($job->kitItems()->where('kit_items.id', $locked->id)->exists())->toBeTrue();
+    expect($job->kitItems()->where('kit_items.id', $other->id)->exists())->toBeTrue();
+});
+
 it('redirects away from editing a returned job', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $job = Job::factory()->returned()->create();
@@ -152,6 +252,75 @@ it('requires password confirmation before admin can delete a job', function () {
 it('rejects deletion of a non-returned job', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $job = Job::factory()->open()->create();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('jobs.show', $job));
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('jobs.destroy', $job), ['confirmation_phrase' => "DELETE-JOB-{$job->id}"])
+        ->assertRedirect(route('jobs.show', $job));
+
+    expect(Job::find($job->id))->not->toBeNull();
+});
+
+it('deletes an empty non-returned test job with correct phrase and password confirmed', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $job = Job::factory()->create(['status' => 'open']);
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('jobs.show', $job));
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('jobs.destroy', $job), ['confirmation_phrase' => "DELETE-JOB-{$job->id}"])
+        ->assertRedirect(route('jobs.index'));
+
+    expect(Job::withTrashed()->find($job->id)?->deleted_at)->not->toBeNull();
+});
+
+it('does not delete an active job with inspection evidence', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = Client::factory()->create();
+    $kitType = KitType::create(['name' => 'Evidence Rope', 'interval_months' => 6]);
+    $job = Job::factory()->create(['client_id' => $client->id, 'status' => 'open']);
+    $item = KitItem::create(['client_id' => $client->id, 'kit_type_id' => $kitType->id, 'asset_tag' => 'EVIDENCE', 'status' => 'in_service']);
+    $job->kitItems()->attach($item->id);
+
+    Inspection::create([
+        'kit_item_id' => $item->id,
+        'inspector_user_id' => $admin->id,
+        'inspection_job_id' => $job->id,
+        'status' => 'complete',
+        'inspection_date' => now()->toDateString(),
+        'next_due_date' => now()->addMonths(6)->toDateString(),
+        'overall_status' => 'pass',
+    ]);
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route('jobs.show', $job));
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('jobs.destroy', $job), ['confirmation_phrase' => "DELETE-JOB-{$job->id}"])
+        ->assertRedirect(route('jobs.show', $job));
+
+    expect(Job::find($job->id))->not->toBeNull();
+});
+
+it('does not delete an active job with photo evidence', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $job = Job::factory()->create(['status' => 'open']);
+
+    JobPhoto::create([
+        'inspection_job_id' => $job->id,
+        'phase' => 'drop_off',
+        'path' => 'job-photos/test.jpg',
+        'uploaded_by_user_id' => $admin->id,
+    ]);
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => time()])

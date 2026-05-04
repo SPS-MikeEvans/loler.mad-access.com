@@ -77,6 +77,8 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
 
     // Jobs (manifests / work orders)
     Route::resource('jobs', JobController::class);
+    Route::post('jobs/{job}/kit-items', [JobController::class, 'addKitItems'])
+        ->name('jobs.kit-items.store');
     Route::post('jobs/{job}/kit-items/{kitItem}/mark-done', [JobController::class, 'markItemDone'])
         ->name('jobs.kit-items.mark-done');
     Route::get('jobs/{job}/bag-label', [JobController::class, 'bagLabel'])->name('jobs.bag-label');

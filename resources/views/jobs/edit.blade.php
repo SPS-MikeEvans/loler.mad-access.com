@@ -32,7 +32,7 @@
                         {{-- Kit items --}}
                         <div class="mb-6">
                             <x-input-label value="Kit Items" />
-                            <p class="text-sm text-gray-500 mb-3">Select items to include in this job. Items that already have inspections are shown even if deselected.</p>
+                            <p class="text-sm text-gray-500 mb-3">Select items to include in this job. Items with inspections linked to this job must stay selected.</p>
 
                             @php $selectedIds = $job->kitItems->pluck('id')->toArray(); @endphp
 
@@ -41,21 +41,32 @@
                             @else
                                 <div class="space-y-2 max-h-80 overflow-y-auto border border-gray-200 rounded-lg p-3">
                                     @foreach ($clientKitItems as $index => $item)
-                                        @php $isSelected = in_array($item->id, $selectedIds); $pivot = $job->kitItems->find($item->id)?->pivot; @endphp
+                                        @php
+                                            $isSelected = in_array($item->id, $selectedIds);
+                                            $isLocked = in_array($item->id, $lockedKitItemIds);
+                                            $pivot = $job->kitItems->find($item->id)?->pivot;
+                                        @endphp
                                         <div class="p-2 rounded hover:bg-gray-50">
                                             <label class="flex items-start gap-3 cursor-pointer">
+                                                @if ($isLocked)
+                                                    <input type="hidden" name="kit_item_ids[]" value="{{ $item->id }}">
+                                                @endif
                                                 <input
                                                     type="checkbox"
                                                     name="kit_item_ids[]"
                                                     value="{{ $item->id }}"
                                                     @checked($isSelected)
+                                                    @disabled($isLocked)
                                                     class="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red"
                                                     id="item_{{ $item->id }}"
                                                 >
                                                 <span class="text-sm text-gray-800">
                                                     {{ $item->typeName() }}
                                                     @if ($item->asset_tag || $item->serial_no)
-                                                        <span class="text-gray-400">— {{ $item->asset_tag ?? $item->serial_no }}</span>
+                                                        <span class="text-gray-400">- {{ $item->asset_tag ?? $item->serial_no }}</span>
+                                                    @endif
+                                                    @if ($isLocked)
+                                                        <span class="ml-2 text-xs font-medium text-amber-600">inspection linked</span>
                                                     @endif
                                                 </span>
                                             </label>
@@ -63,8 +74,8 @@
                                                 <div class="mt-1 ml-7">
                                                     <input
                                                         type="text"
-                                                        name="condition_notes[{{ $index }}]"
-                                                        value="{{ old("condition_notes.{$index}", $pivot?->condition_notes) }}"
+                                                        name="condition_notes[{{ $item->id }}]"
+                                                        value="{{ old("condition_notes.{$item->id}", $pivot?->condition_notes) }}"
                                                         placeholder="Condition notes at drop-off (optional)"
                                                         class="block w-full border-gray-200 rounded text-xs text-gray-600 focus:ring-brand-red focus:border-brand-red"
                                                     >
