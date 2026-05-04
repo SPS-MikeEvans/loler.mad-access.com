@@ -26,7 +26,6 @@
         .badge-pass { background: #d1fae5; color: #065f46; }
         .badge-fail { background: #fee2e2; color: #991b1b; }
         .badge-conditional { background: #fef3c7; color: #92400e; }
-        .total-row td { font-weight: bold; background: #f0f4ff; border-top: 2px solid #001F3F; }
         .footer { margin-top: 20px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 8px; color: #888; text-align: center; }
         .no-data { padding: 20px; text-align: center; color: #888; font-style: italic; }
     </style>
@@ -73,7 +72,6 @@
                     <th>Serial No.</th>
                     <th>Inspector</th>
                     <th>Result</th>
-                    <th style="text-align:right;">Cost (£)</th>
                 </tr>
             </thead>
             <tbody>
@@ -99,13 +97,8 @@
                         <td>{{ $item->serial_no ?? '—' }}</td>
                         <td>{{ $insp->inspector->name }}</td>
                         <td><span class="badge {{ $badgeClass }}">{{ $label }}</span></td>
-                        <td style="text-align:right;">{{ $insp->cost !== null ? number_format((float) $insp->cost, 2) : '—' }}</td>
                     </tr>
                 @endforeach
-                <tr class="total-row">
-                    <td colspan="6">Total</td>
-                    <td style="text-align:right;">£{{ number_format($total, 2) }}</td>
-                </tr>
             </tbody>
         </table>
     @endif

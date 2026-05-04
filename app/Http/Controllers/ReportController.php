@@ -24,9 +24,7 @@ class ReportController extends Controller
             ->get()
             ->flatMap(fn ($item) => $item->inspections->map(fn ($i) => ['item' => $item, 'inspection' => $i]));
 
-        $total = $inspections->sum(fn ($r) => (float) ($r['inspection']->cost ?? 0));
-
-        $pdf = Pdf::loadView('reports.client-inspections', compact('client', 'inspections', 'total', 'year', 'month'));
+        $pdf = Pdf::loadView('reports.client-inspections', compact('client', 'inspections', 'year', 'month'));
 
         return $pdf->download("loler-report-{$client->id}-{$year}-{$month}.pdf");
     }

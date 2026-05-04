@@ -70,6 +70,7 @@ class MobileInspectionController extends Controller
             'inspection_date' => now()->toDateString(),
             'next_due_date' => now()->addMonths($kitItem->kitType->interval_months ?? 6)->toDateString(),
             'overall_status' => 'pass',
+            'cost' => $kitItem->kitType->inspection_price,
         ]);
 
         foreach ($checklist as $item) {
@@ -200,14 +201,15 @@ class MobileInspectionController extends Controller
             Storage::disk('public')->put($sigPath, $imageData);
         }
 
+        $kitItem = $inspection->kitItem()->with(['client', 'kitType'])->first();
+
         $inspection->update([
             'status' => 'complete',
             'overall_status' => $overallStatus,
             'report_notes' => $data['report_notes'] ?? null,
             'digital_sig_path' => $sigPath,
+            'cost' => $inspection->cost ?? $kitItem->kitType->inspection_price,
         ]);
-
-        $kitItem = $inspection->kitItem()->with(['client', 'kitType'])->first();
 
         $newKitStatus = $overallStatus === 'fail' ? 'quarantined' : 'in_service';
         $kitItem->update([

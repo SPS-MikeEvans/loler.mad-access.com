@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('inspection_id')->constrained()->cascadeOnDelete();
             $table->string('check_category');
             $table->string('check_text');
-            $table->enum('status', ['pass', 'fail', 'n/a']);
+            $table->enum('status', ['pass', 'fail', 'n/a'])->nullable();
             $table->text('notes')->nullable();
             $table->string('photo_path')->nullable();
         });
