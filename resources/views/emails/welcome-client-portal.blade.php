@@ -18,7 +18,7 @@ A client portal account has been created for **{{ $client->name }}**. You can us
 
 You will be required to set a new password when you first log in.
 
-<x-mail::button :url="route('login')">
+<x-mail::button :url="route('welcome.link', ['email' => $user->email])">
 Log In & Set Your Password
 </x-mail::button>
 

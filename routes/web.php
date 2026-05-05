@@ -20,6 +20,7 @@ use App\Http\Controllers\Portal;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -100,6 +101,25 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
         ->name('liabilities.update')
         ->middleware('role:admin');
 });
+
+// Welcome-email landing page. Drops any stale session that doesn't match the
+// recipient's email so a freshly-issued temp password isn't blocked by a prior
+// login (which would otherwise route a non-client_viewer through /dashboard →
+// /portal/dashboard and trip the role middleware with a 403).
+Route::get('/welcome-link', function (Request $request) {
+    $email = (string) $request->query('email', '');
+
+    if (auth()->check()) {
+        $current = auth()->user();
+        if ($email === '' || strcasecmp($current->email, $email) !== 0) {
+            auth()->guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+    }
+
+    return redirect()->route('login', $email !== '' ? ['email' => $email] : []);
+})->name('welcome.link');
 
 // Phone-as-camera: token-authenticated, no session required
 Route::get('/photo-capture/{token}', [PhotoCaptureController::class, 'show'])->name('photo-capture.show');
