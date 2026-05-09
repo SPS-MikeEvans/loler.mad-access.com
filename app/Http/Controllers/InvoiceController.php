@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreInvoiceRequest;
 use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -39,13 +40,9 @@ class InvoiceController extends Controller
         return view('invoices.create', compact('client', 'uninvoicedInspections', 'subtotal'));
     }
 
-    public function store(Client $client, Request $request): RedirectResponse
+    public function store(StoreInvoiceRequest $request, Client $client): RedirectResponse
     {
-        $data = $request->validate([
-            'period_from' => ['required', 'date'],
-            'period_to'   => ['required', 'date', 'after_or_equal:period_from'],
-            'notes'       => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $inspections = $client->kitItems()
             ->with('kitType')
@@ -61,21 +58,63 @@ class InvoiceController extends Controller
             return back()->with('error', 'No uninvoiced inspections found in that date range.');
         }
 
+        $eligibleIds = $inspections->pluck('id')->all();
+        $waivedIds = collect($data['waived_inspection_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => in_array($id, $eligibleIds, true))
+            ->values()
+            ->all();
+
+        $subtotal = (float) $inspections
+            ->reject(fn ($i) => in_array((int) $i->id, $waivedIds, true))
+            ->sum('cost');
+
+        $discountPercent = null;
+        $totalAmount = $subtotal;
+
+        if (filled($data['fixed_total'] ?? null)) {
+            $fixedTotal = (float) $data['fixed_total'];
+
+            if ($subtotal <= 0 || $fixedTotal >= $subtotal) {
+                return back()
+                    ->withErrors(['fixed_total' => 'Fixed total must be less than the subtotal of the un-waived inspections.'])
+                    ->withInput();
+            }
+
+            $discountPercent = round((($subtotal - $fixedTotal) / $subtotal) * 100, 2);
+            $totalAmount = round($fixedTotal, 2);
+        } elseif (filled($data['discount_percent'] ?? null)) {
+            $discountPercent = (float) $data['discount_percent'];
+            $totalAmount = round($subtotal * (1 - $discountPercent / 100), 2);
+        }
+
         $invoice = Invoice::create([
-            'client_id'      => $client->id,
+            'client_id' => $client->id,
             'invoice_number' => Invoice::generateNumber(),
-            'issued_date'    => now()->toDateString(),
-            'period_from'    => $data['period_from'],
-            'period_to'      => $data['period_to'],
-            'notes'          => $data['notes'] ?? null,
-            'total_amount'   => $inspections->sum('cost'),
+            'issued_date' => now()->toDateString(),
+            'period_from' => $data['period_from'],
+            'period_to' => $data['period_to'],
+            'notes' => $data['notes'] ?? null,
+            'subtotal' => round($subtotal, 2),
+            'discount_percent' => $discountPercent,
+            'total_amount' => $totalAmount,
         ]);
 
         foreach ($inspections as $inspection) {
-            $inspection->update(['invoice_id' => $invoice->id]);
+            $inspection->update([
+                'invoice_id' => $invoice->id,
+                'invoice_waived' => in_array((int) $inspection->id, $waivedIds, true),
+            ]);
         }
 
-        AuditLog::record('created', 'Invoice', $invoice->id, "Generated invoice {$invoice->invoice_number} for {$client->name}");
+        $auditDetail = "Generated invoice {$invoice->invoice_number} for {$client->name}";
+        if ($discountPercent !== null) {
+            $auditDetail .= " with {$discountPercent}% discount";
+        }
+        if (count($waivedIds) > 0) {
+            $auditDetail .= ' (waived: '.count($waivedIds).')';
+        }
+        AuditLog::record('created', 'Invoice', $invoice->id, $auditDetail);
 
         return redirect()->route('clients.invoices.show', [$client, $invoice])
             ->with('success', "Invoice {$invoice->invoice_number} created.");
@@ -101,12 +140,12 @@ class InvoiceController extends Controller
         $invoice->load(['client', 'inspections.kitItem.kitType', 'inspections.inspector']);
 
         $pdf = Pdf::loadView('pdf.invoice', [
-            'invoice'      => $invoice,
+            'invoice' => $invoice,
             'company_name' => config('company.name'),
-            'company'      => config('company'),
+            'company' => config('company'),
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->download('invoice-' . $invoice->invoice_number . '.pdf');
+        return $pdf->download('invoice-'.$invoice->invoice_number.'.pdf');
     }
 
     public function destroy(Request $request, Client $client, Invoice $invoice): RedirectResponse
@@ -122,7 +161,7 @@ class InvoiceController extends Controller
             return $failure;
         }
 
-        $invoice->inspections()->update(['invoice_id' => null]);
+        $invoice->inspections()->update(['invoice_id' => null, 'invoice_waived' => false]);
 
         AuditLog::record(
             'deleted',

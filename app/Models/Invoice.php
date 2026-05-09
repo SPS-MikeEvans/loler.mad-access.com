@@ -15,15 +15,19 @@ class Invoice extends Model
         'period_from',
         'period_to',
         'notes',
+        'subtotal',
+        'discount_percent',
         'total_amount',
     ];
 
     protected function casts(): array
     {
         return [
-            'issued_date'  => 'date',
-            'period_from'  => 'date',
-            'period_to'    => 'date',
+            'issued_date' => 'date',
+            'period_from' => 'date',
+            'period_to' => 'date',
+            'subtotal' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
             'total_amount' => 'decimal:2',
         ];
     }
@@ -33,7 +37,7 @@ class Invoice extends Model
         $year = now()->year;
         $count = static::whereYear('issued_date', $year)->count();
 
-        return 'INV-' . $year . '-' . str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+        return 'INV-'.$year.'-'.str_pad($count + 1, 3, '0', STR_PAD_LEFT);
     }
 
     /** @return BelongsTo<Client, $this> */

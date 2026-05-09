@@ -133,9 +133,27 @@
                     <td>{{ $inspection->kitItem->asset_tag ?? $inspection->kitItem->serial_no ?? '—' }}</td>
                     <td>{{ $inspection->inspector->name ?? '—' }}</td>
                     <td>{{ ucfirst($inspection->overall_status) }}</td>
-                    <td class="amount-col">{{ $inspection->cost !== null ? number_format((float) $inspection->cost, 2) : '—' }}</td>
+                    <td class="amount-col">
+                        @if ($inspection->invoice_waived)
+                            0.00 (Waived)
+                        @else
+                            {{ $inspection->cost !== null ? number_format((float) $inspection->cost, 2) : '—' }}
+                        @endif
+                    </td>
                 </tr>
             @endforeach
+            <tr>
+                <td colspan="5" style="text-align:right;">Subtotal</td>
+                <td class="amount-col">£{{ number_format($invoice->subtotal, 2) }}</td>
+            </tr>
+            @if ($invoice->discount_percent !== null)
+                <tr>
+                    <td colspan="5" style="text-align:right;">
+                        Discount ({{ number_format($invoice->discount_percent, 2) }}%)
+                    </td>
+                    <td class="amount-col">-£{{ number_format($invoice->subtotal - $invoice->total_amount, 2) }}</td>
+                </tr>
+            @endif
             <tr class="total-row">
                 <td colspan="5" style="text-align:right;">Total</td>
                 <td class="amount-col">£{{ number_format($invoice->total_amount, 2) }}</td>

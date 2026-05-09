@@ -20,6 +20,7 @@ class Inspection extends Model
         'kit_item_id',
         'inspector_user_id',
         'invoice_id',
+        'invoice_waived',
         'inspection_job_id',
         'status',
         'started_at',
@@ -40,6 +41,7 @@ class Inspection extends Model
             'started_at' => 'datetime',
             'created_at' => 'datetime',
             'cost' => 'decimal:2',
+            'invoice_waived' => 'boolean',
         ];
     }
 

@@ -93,13 +93,32 @@
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-right text-gray-900">
-                                            {{ $inspection->cost ? '£' . number_format($inspection->cost, 2) : '—' }}
+                                            @if ($inspection->invoice_waived)
+                                                £0.00
+                                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700">Waived</span>
+                                            @else
+                                                {{ $inspection->cost ? '£' . number_format($inspection->cost, 2) : '—' }}
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr class="border-t-2 border-gray-300 bg-gray-50">
+                                    <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                                    <td class="px-4 py-3 text-right text-gray-900">£{{ number_format($invoice->subtotal, 2) }}</td>
+                                </tr>
+                                @if ($invoice->discount_percent !== null)
+                                    <tr class="bg-gray-50">
+                                        <td colspan="5" class="px-4 py-3 text-right text-gray-700">
+                                            Discount ({{ number_format($invoice->discount_percent, 2) }}%)
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-gray-900">
+                                            -£{{ number_format($invoice->subtotal - $invoice->total_amount, 2) }}
+                                        </td>
+                                    </tr>
+                                @endif
+                                <tr class="bg-gray-50">
                                     <td colspan="5" class="px-4 py-3 text-right font-bold text-gray-800">Total</td>
                                     <td class="px-4 py-3 text-right font-bold text-xl text-brand-navy">£{{ number_format($invoice->total_amount, 2) }}</td>
                                 </tr>
