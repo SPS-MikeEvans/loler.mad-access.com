@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\CreateClientPortalUser;
 use App\Actions\SendClientPortalWelcome;
+use App\Exceptions\ClientHasActiveJobsException;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Models\AuditLog;
@@ -108,6 +109,12 @@ class ClientController extends Controller
             return $failure;
         }
 
+        try {
+            $client->delete();
+        } catch (ClientHasActiveJobsException $e) {
+            return back()->withErrors(['confirmation_phrase' => $e->getMessage()]);
+        }
+
         AuditLog::record(
             'deleted',
             'Client',
@@ -120,8 +127,6 @@ class ClientController extends Controller
                 'confirmed_at' => now()->toIso8601String(),
             ]
         );
-
-        $client->delete();
 
         return redirect()->route('clients.index')
             ->with('success', "Client {$client->name} deleted.");

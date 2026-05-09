@@ -284,3 +284,114 @@ it('resets invoice_waived when the invoice is destroyed', function () {
     expect($waive->refresh()->invoice_waived)->toBeFalse();
     expect($waive->refresh()->invoice_id)->toBeNull();
 });
+
+it('soft-deletes the invoice row instead of hard-deleting it', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeInvoiceClient('softdel');
+    $kitType = makeInvoiceKitType();
+    makeInvoiceableInspection($client, $kitType, $admin, 100, '2026-04-01');
+
+    $this->actingAs($admin)
+        ->post(route('clients.invoices.store', $client), [
+            'period_from' => '2026-04-01',
+            'period_to' => '2026-04-30',
+        ]);
+
+    $invoice = Invoice::where('client_id', $client->id)->first();
+
+    $this->actingAs($admin)->get(route('clients.invoices.show', [$client, $invoice]));
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('clients.invoices.destroy', [$client, $invoice]), [
+            'confirmation_phrase' => "DELETE-INVOICE-{$invoice->id}",
+        ]);
+
+    expect(Invoice::find($invoice->id))->toBeNull();
+    expect(Invoice::withTrashed()->find($invoice->id)?->deleted_at)->not->toBeNull();
+});
+
+it('does not reuse invoice numbers after a soft-delete', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeInvoiceClient('numbering');
+    $kitType = makeInvoiceKitType();
+    makeInvoiceableInspection($client, $kitType, $admin, 100, '2026-04-01');
+
+    $this->actingAs($admin)
+        ->post(route('clients.invoices.store', $client), [
+            'period_from' => '2026-04-01',
+            'period_to' => '2026-04-30',
+        ]);
+    $first = Invoice::where('client_id', $client->id)->first();
+    expect($first)->not->toBeNull();
+
+    $this->actingAs($admin)->get(route('clients.invoices.show', [$client, $first]));
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('clients.invoices.destroy', [$client, $first]), [
+            'confirmation_phrase' => "DELETE-INVOICE-{$first->id}",
+        ]);
+
+    makeInvoiceableInspection($client, $kitType, $admin, 100, '2026-05-01');
+
+    $this->actingAs($admin)
+        ->post(route('clients.invoices.store', $client), [
+            'period_from' => '2026-05-01',
+            'period_to' => '2026-05-31',
+        ]);
+    $second = Invoice::where('client_id', $client->id)->first();
+
+    expect($second)->not->toBeNull();
+    expect($second->invoice_number)->not->toBe($first->invoice_number);
+    expect((int) substr($second->invoice_number, -3))->toBeGreaterThan((int) substr($first->invoice_number, -3));
+});
+
+it('returns 404 when viewing a soft-deleted invoice', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeInvoiceClient('show404');
+    $kitType = makeInvoiceKitType();
+    makeInvoiceableInspection($client, $kitType, $admin, 100, '2026-04-01');
+
+    $this->actingAs($admin)
+        ->post(route('clients.invoices.store', $client), [
+            'period_from' => '2026-04-01',
+            'period_to' => '2026-04-30',
+        ]);
+    $invoice = Invoice::where('client_id', $client->id)->first();
+
+    $this->actingAs($admin)->get(route('clients.invoices.show', [$client, $invoice]));
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('clients.invoices.destroy', [$client, $invoice]), [
+            'confirmation_phrase' => "DELETE-INVOICE-{$invoice->id}",
+        ]);
+
+    $this->actingAs($admin)
+        ->get(route('clients.invoices.show', [$client, $invoice->id]))
+        ->assertNotFound();
+});
+
+it('does not re-link inspections when a soft-deleted invoice is restored', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeInvoiceClient('restore');
+    $kitType = makeInvoiceKitType();
+    $inspection = makeInvoiceableInspection($client, $kitType, $admin, 100, '2026-04-01');
+
+    $this->actingAs($admin)
+        ->post(route('clients.invoices.store', $client), [
+            'period_from' => '2026-04-01',
+            'period_to' => '2026-04-30',
+        ]);
+    $invoice = Invoice::where('client_id', $client->id)->first();
+
+    $this->actingAs($admin)->get(route('clients.invoices.show', [$client, $invoice]));
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->delete(route('clients.invoices.destroy', [$client, $invoice]), [
+            'confirmation_phrase' => "DELETE-INVOICE-{$invoice->id}",
+        ]);
+
+    Invoice::withTrashed()->find($invoice->id)->restore();
+
+    expect($inspection->refresh()->invoice_id)->toBeNull();
+    expect($inspection->refresh()->invoice_waived)->toBeFalse();
+});

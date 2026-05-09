@@ -6,11 +6,17 @@ use Database\Factories\KitTypeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * SoftDeletes added 2026-05-09. KitTypeController blocks deletion when any kit_item references the type,
+ * so trashed types never have live referrers. The `kit_types_name_brand_unique` index still applies to
+ * trashed rows — recreating a trashed type with the same (name, brand) is rejected at the DB layer.
+ */
 class KitType extends Model
 {
     /** @use HasFactory<KitTypeFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public $timestamps = false;
 

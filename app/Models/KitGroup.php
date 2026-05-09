@@ -32,7 +32,7 @@ class KitGroup extends Model
     /** @return BelongsTo<Client, $this> */
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     /** @return HasMany<KitItem, $this> */

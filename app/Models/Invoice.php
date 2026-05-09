@@ -5,9 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * SoftDeletes added 2026-05-09. Cascading from Client is centralized in Client's `deleting` listener.
+ */
 class Invoice extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'client_id',
         'invoice_number',
@@ -35,7 +41,7 @@ class Invoice extends Model
     public static function generateNumber(): string
     {
         $year = now()->year;
-        $count = static::whereYear('issued_date', $year)->count();
+        $count = static::withTrashed()->whereYear('issued_date', $year)->count();
 
         return 'INV-'.$year.'-'.str_pad($count + 1, 3, '0', STR_PAD_LEFT);
     }
@@ -43,7 +49,7 @@ class Invoice extends Model
     /** @return BelongsTo<Client, $this> */
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     /** @return HasMany<Inspection, $this> */

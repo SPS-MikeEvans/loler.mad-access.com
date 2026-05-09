@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\DeleteInvoice;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Models\AuditLog;
 use App\Models\Client;
@@ -161,8 +162,6 @@ class InvoiceController extends Controller
             return $failure;
         }
 
-        $invoice->inspections()->update(['invoice_id' => null, 'invoice_waived' => false]);
-
         AuditLog::record(
             'deleted',
             'Invoice',
@@ -176,7 +175,7 @@ class InvoiceController extends Controller
             ]
         );
 
-        $invoice->delete();
+        app(DeleteInvoice::class)->cascade($invoice);
 
         return redirect()->route('clients.show', $client)
             ->with('success', 'Invoice deleted and inspections unlinked.');

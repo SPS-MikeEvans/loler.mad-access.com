@@ -79,7 +79,7 @@ class KitItem extends Model
     /** @return BelongsTo<Client, $this> */
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     /** @return BelongsTo<KitGroup, $this> */
@@ -91,7 +91,7 @@ class KitItem extends Model
     /** @return BelongsTo<KitType, $this> */
     public function kitType(): BelongsTo
     {
-        return $this->belongsTo(KitType::class);
+        return $this->belongsTo(KitType::class)->withTrashed();
     }
 
     /** @return HasMany<Inspection, $this> */
