@@ -10,6 +10,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobPhotoController;
 use App\Http\Controllers\JobSignatureController;
+use App\Http\Controllers\KitBrandController;
 use App\Http\Controllers\KitGroupController;
 use App\Http\Controllers\KitItemController;
 use App\Http\Controllers\KitTypeBulkEditController;
@@ -40,6 +41,10 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
         ->name('kit-types.ai-refresh')
         ->middleware(['role:admin', 'throttle:5,60']);
     Route::resource('kit-types', KitTypeController::class)->except(['show']);
+
+    Route::resource('kit-brands', KitBrandController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->middleware('role:admin');
 
     Route::post('/kit-types/bulk-edit', [KitTypeBulkEditController::class, 'form'])->name('kit-types.bulk-edit.form');
     Route::post('/kit-types/bulk-edit/preview', [KitTypeBulkEditController::class, 'preview'])->name('kit-types.bulk-edit.preview');

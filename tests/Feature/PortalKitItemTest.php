@@ -314,3 +314,29 @@ it('rejects a kit_group_id belonging to another client', function () {
 
     expect(KitItem::where('asset_tag', 'GRP-X-001')->exists())->toBeFalse();
 });
+
+it('shows a non-review flash for an all-known-types submission', function () {
+    [, $user, $kitType] = makePortalSetup('flash-known');
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'kit_type_id' => $kitType->id,
+            'asset_tag' => 'KNOWN-1',
+        ])
+        ->assertRedirect(route('portal.kit.index'))
+        ->assertSessionHas('success', fn (string $msg) => str_contains($msg, 'added')
+            && ! str_contains(strtolower($msg), 'review'));
+});
+
+it('shows a review flash when any submitted item is custom', function () {
+    [, $user] = makePortalSetup('flash-custom');
+
+    $this->actingAs($user)
+        ->post(route('portal.kit.store'), [
+            'custom_type_name' => 'Roof Master Harness',
+            'asset_tag' => 'CUST-1',
+        ])
+        ->assertRedirect(route('portal.kit.index'))
+        ->assertSessionHas('success', fn (string $msg) => str_contains(strtolower($msg), 'review')
+            && str_contains(strtolower($msg), '1 working day'));
+});

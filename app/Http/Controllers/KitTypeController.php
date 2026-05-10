@@ -129,7 +129,8 @@ class KitTypeController extends Controller
     {
         $totals = $service->run();
 
-        $message = "{$totals['added']} new equipment types added, {$totals['skipped']} already existed.";
+        $updated = $totals['updated'] ?? 0;
+        $message = "{$totals['added']} new equipment types added, {$updated} updated, {$totals['skipped']} unchanged.";
 
         return redirect()->route('kit-types.index')->with('success', $message);
     }

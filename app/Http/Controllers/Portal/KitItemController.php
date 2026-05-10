@@ -87,8 +87,10 @@ class KitItemController extends Controller
 
         $kitItems = $createKitItemBlock->execute($client, $validated, pendingReview: true);
 
-        $kitItems->each(function (KitItem $kitItem) {
+        $hasCustom = false;
+        $kitItems->each(function (KitItem $kitItem) use (&$hasCustom) {
             if ($kitItem->isCustomType()) {
+                $hasCustom = true;
                 $similar = KitType::whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($kitItem->custom_type_name).'%'])->first();
                 $note = $similar
                     ? "Client submitted custom item \"{$kitItem->custom_type_name}\" — possible match: {$similar->name} (ID {$similar->id})"
@@ -99,8 +101,15 @@ class KitItemController extends Controller
             }
         });
 
-        return redirect()->route('portal.kit.index')
-            ->with('success', $kitItems->count().' equipment '.($kitItems->count() === 1 ? 'item' : 'items').' submitted. Our team will review and activate '.($kitItems->count() === 1 ? 'it' : 'them').' shortly.');
+        $count = $kitItems->count();
+        $noun = $count === 1 ? 'item' : 'items';
+        $pronoun = $count === 1 ? 'it' : 'them';
+
+        $message = $hasCustom
+            ? "{$count} equipment {$noun} submitted. Our team will review and activate {$pronoun} within 1 working day."
+            : "{$count} equipment {$noun} added.";
+
+        return redirect()->route('portal.kit.index')->with('success', $message);
     }
 
     public function updateCustomName(KitItem $kitItem, Request $request): RedirectResponse

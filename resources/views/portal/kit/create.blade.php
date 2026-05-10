@@ -41,6 +41,9 @@
                                         && (this.activeBrand === '' || t.brand === this.activeBrand)
                                     );
                                 },
+                                get hasNoResults() {
+                                    return this.filtered.length === 0 && this.search.trim() !== '';
+                                },
                                 get displayLabel() {
                                     if (this.useCustom && this.customName) return this.customName + ' (custom — pending review)';
                                     return this.selectedLabel;
@@ -62,6 +65,14 @@
                                     this.selectedLifts = null;
                                     this.useCustom = true;
                                     this.open = false;
+                                    if (this.activeBrand) {
+                                        window.dispatchEvent(new CustomEvent('equipment-custom-confirmed', { detail: { manufacturer: this.activeBrand } }));
+                                    }
+                                },
+                                useSearchAsCustom() {
+                                    if (!this.search.trim()) return;
+                                    this.customName = this.search.trim();
+                                    this.confirmCustom();
                                 },
                                 openModal() {
                                     this.search = '';
@@ -218,13 +229,28 @@
                                             </template>
                                         </div>
 
-                                        <p x-show="filtered.length === 0"
+                                        {{-- Prominent zero-results CTA: one-tap promote search → custom entry --}}
+                                        <div x-show="hasNoResults"
+                                             class="mt-2 rounded-xl border border-dashed border-brand-red/40 bg-red-50/40 p-4 text-center">
+                                            <p class="text-sm text-gray-700">
+                                                No equipment matches "<span class="font-semibold" x-text="search"></span>".
+                                            </p>
+                                            <button type="button" @click="useSearchAsCustom()"
+                                                    class="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-red transition">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                <span>Add "<span x-text="search"></span>" as a custom type</span>
+                                            </button>
+                                            <p class="mt-2 text-xs text-gray-500">Our team will activate it after a quick review.</p>
+                                        </div>
+
+                                        <p x-show="!hasNoResults && filtered.length === 0"
                                            class="py-8 text-center text-sm text-gray-400 italic">
-                                            No equipment matches your search.
-                                            <span class="block mt-1 text-gray-400">Try a different keyword, or use the custom entry below.</span>
+                                            Start typing to search, or use the custom entry below.
                                         </p>
 
-                                        {{-- Custom entry fallback --}}
+                                        {{-- Custom entry fallback (still available for users who want to type something different from their search) --}}
                                         <div class="mt-5 border-t border-gray-100 pt-5">
                                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Can't find your equipment?</p>
                                             <div class="flex gap-2">
@@ -303,10 +329,12 @@
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <div>
+                            <div x-data="{ value: '{{ addslashes(old('manufacturer', '')) }}' }"
+                                 @equipment-custom-confirmed.window="if (!value.trim()) value = $event.detail.manufacturer">
                                 <x-input-label for="manufacturer" :value="__('Manufacturer')" />
-                                <x-text-input id="manufacturer" class="block mt-1 w-full" type="text" name="manufacturer"
-                                              :value="old('manufacturer')" />
+                                <input id="manufacturer" type="text" name="manufacturer"
+                                       x-model="value"
+                                       class="border-gray-300 focus:border-brand-red focus:ring-brand-red rounded-md shadow-sm block mt-1 w-full" />
                                 <x-input-error :messages="$errors->get('manufacturer')" class="mt-2" />
                             </div>
                             <div>

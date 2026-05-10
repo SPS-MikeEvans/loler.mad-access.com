@@ -69,7 +69,11 @@
                                         </div>
                                         <div class="mt-3 flex flex-wrap gap-2">
                                             @if ($item->pending_review)
-                                                <span class="mobile-chip bg-blue-100 text-blue-700">Pending Review</span>
+                                                @if ($item->isCustomType())
+                                                    <span class="mobile-chip bg-amber-100 text-amber-800">Custom — pending review</span>
+                                                @else
+                                                    <span class="mobile-chip bg-blue-100 text-blue-700">Pending Review</span>
+                                                @endif
                                             @else
                                                 <span class="mobile-chip {{ $statusColour }}">{{ ucfirst(str_replace('_', ' ', $item->status)) }}</span>
                                             @endif

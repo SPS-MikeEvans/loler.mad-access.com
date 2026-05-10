@@ -24,8 +24,13 @@ class KitTypeRefreshComplete extends Notification
         $mail = (new MailMessage)
             ->subject('Equipment List Refresh Complete')
             ->line('The AI equipment refresh has finished.')
-            ->line("{$this->totals['added']} new equipment types added.")
-            ->line("{$this->totals['skipped']} types already existed (unchanged).");
+            ->line("{$this->totals['added']} new equipment types added.");
+
+        if (! empty($this->totals['updated'])) {
+            $mail->line("{$this->totals['updated']} existing types backfilled with new data.");
+        }
+
+        $mail->line("{$this->totals['skipped']} types unchanged.");
 
         if (! empty($this->totals['errors'])) {
             $mail->line('Errors: '.implode('; ', $this->totals['errors']));
