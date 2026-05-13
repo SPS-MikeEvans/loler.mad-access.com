@@ -23,33 +23,90 @@
             {{-- Invoice summary card --}}
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
+                    @php
+                        $statusEnum = $invoice->status instanceof \App\Enums\InvoiceStatus
+                            ? $invoice->status
+                            : \App\Enums\InvoiceStatus::from((string) $invoice->status);
+                        $canSend = ! $statusEnum->isTerminal();
+                        $canMarkPaid = $statusEnum->canTransitionTo(\App\Enums\InvoiceStatus::Paid);
+                        $canChase = in_array($statusEnum, [\App\Enums\InvoiceStatus::Sent, \App\Enums\InvoiceStatus::Overdue], true);
+                        $canCancel = $statusEnum->canTransitionTo(\App\Enums\InvoiceStatus::Cancelled);
+                        $outstanding = $invoice->outstandingAmount();
+                        $partial = $invoice->isPartiallyPaid();
+                    @endphp
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                         <div>
-                            <h3 class="text-2xl font-bold text-brand-navy">{{ $invoice->invoice_number }}</h3>
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-2xl font-bold text-brand-navy">{{ $invoice->invoice_number }}</h3>
+                                <span class="px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full {{ $statusEnum->badgeClasses() }}">
+                                    {{ $statusEnum->label() }}
+                                </span>
+                            </div>
                             <p class="text-sm text-gray-500 mt-1">Issued {{ $invoice->issued_date->format('d F Y') }}</p>
+                            @if($invoice->due_date)
+                                <p class="text-sm text-gray-500">Due {{ $invoice->due_date->format('d F Y') }}</p>
+                            @endif
                             <p class="text-sm text-gray-600 mt-1">
                                 Period: {{ $invoice->period_from->format('d M Y') }} – {{ $invoice->period_to->format('d M Y') }}
                             </p>
+                            @if($invoice->sent_at)
+                                <p class="text-xs text-gray-500 mt-1">Sent {{ $invoice->sent_at->diffForHumans() }}</p>
+                            @endif
+                            @if($invoice->paid_at)
+                                <p class="text-xs text-green-700 mt-1">Paid {{ $invoice->paid_at->format('d M Y') }}</p>
+                            @endif
+                            @if($invoice->last_chase_sent_at)
+                                <p class="text-xs text-amber-700 mt-1">Last chase {{ $invoice->last_chase_sent_at->diffForHumans() }}</p>
+                            @endif
+                            @if($partial)
+                                <p class="text-sm text-red-700 mt-2 font-semibold">Outstanding: £{{ number_format($outstanding, 2) }}</p>
+                            @endif
                         </div>
-                        <div class="flex gap-2 flex-wrap">
+                        <div class="flex gap-2 flex-wrap justify-end">
                             @can('view-reports')
                                 <a href="{{ route('clients.invoices.pdf', [$client, $invoice]) }}"
                                    class="inline-flex items-center gap-2 px-4 py-2 bg-brand-navy text-white text-sm font-semibold rounded-md hover:bg-brand-navy/80 transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-                                    </svg>
                                     Download PDF
                                 </a>
                             @endcan
                             @if(auth()->user()->role === 'admin')
+                                @if($canSend)
+                                    <form method="POST" action="{{ route('clients.invoices.send', [$client, $invoice]) }}">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition">
+                                            {{ $invoice->sent_at ? 'Resend' : 'Send' }}
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($canMarkPaid)
+                                    <form method="POST" action="{{ route('clients.invoices.mark-paid', [$client, $invoice]) }}">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition">
+                                            Mark Paid
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($canChase)
+                                    <form method="POST" action="{{ route('clients.invoices.chase', [$client, $invoice]) }}">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-md hover:bg-amber-700 transition">
+                                            Send Chase
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($canCancel && $cancelConfirmation)
+                                    <button type="button"
+                                            class="inline-flex items-center px-4 py-2 border border-yellow-400 text-yellow-700 text-sm font-semibold rounded-md hover:bg-yellow-50 transition"
+                                            x-data
+                                            x-on:click="$dispatch('open-modal', '{{ $cancelConfirmation->modalName }}')">
+                                        Cancel
+                                    </button>
+                                @endif
                                 <button type="button"
                                         class="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 text-sm font-semibold rounded-md hover:bg-red-50 transition"
                                         x-data
                                         x-on:click="$dispatch('open-modal', '{{ $deleteConfirmation->modalName }}')">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                    <span>Delete Invoice</span>
+                                    Delete
                                 </button>
                             @endif
                         </div>
@@ -151,6 +208,19 @@
             :action="route('clients.invoices.destroy', [$client, $invoice])"
             method="DELETE"
             submit-label="Delete Invoice"
+            :password-confirm="true"
+        />
+    @endif
+
+    @if(auth()->user()->role === 'admin' && $cancelConfirmation && $canCancel)
+        <x-confirmed-action-modal
+            :name="$cancelConfirmation->modalName"
+            title="Cancel Invoice"
+            :message="'Cancelling invoice '.$invoice->invoice_number.' moves it to a terminal cancelled state and hides payment instructions on the PDF. Type the phrase below to continue.'"
+            :phrase="$cancelConfirmation->phrase"
+            :action="route('clients.invoices.cancel', [$client, $invoice])"
+            method="POST"
+            submit-label="Cancel Invoice"
             :password-confirm="true"
         />
     @endif

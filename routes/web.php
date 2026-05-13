@@ -2,9 +2,14 @@
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
+use App\Http\Controllers\BankConnectionController;
+use App\Http\Controllers\BankTransactionController;
+use App\Http\Controllers\BusinessSettingController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CompanyLiabilityController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InspectionController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\JobController;
@@ -19,6 +24,7 @@ use App\Http\Controllers\MobileInspectionController;
 use App\Http\Controllers\PhotoCaptureController;
 use App\Http\Controllers\Portal;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -72,6 +78,17 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
         ->only(['create', 'store', 'show', 'destroy'])
         ->middleware('role:admin');
 
+    Route::scopeBindings()->middleware('role:admin')->group(function () {
+        Route::post('/clients/{client}/invoices/{invoice}/send', [InvoiceController::class, 'send'])
+            ->name('clients.invoices.send');
+        Route::post('/clients/{client}/invoices/{invoice}/mark-paid', [InvoiceController::class, 'markPaid'])
+            ->name('clients.invoices.mark-paid');
+        Route::post('/clients/{client}/invoices/{invoice}/chase', [InvoiceController::class, 'chase'])
+            ->name('clients.invoices.chase');
+        Route::post('/clients/{client}/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])
+            ->name('clients.invoices.cancel');
+    });
+
     Route::get('/clients/{client}/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])
         ->name('clients.invoices.pdf')
         ->can('view-reports');
@@ -105,6 +122,30 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
     Route::put('/liabilities/manage', [CompanyLiabilityController::class, 'update'])
         ->name('liabilities.update')
         ->middleware('role:admin');
+
+    Route::prefix('accounting')->name('accounting.')->middleware('role:admin')->group(function () {
+        Route::get('settings', [BusinessSettingController::class, 'edit'])->name('settings.edit');
+        Route::put('settings', [BusinessSettingController::class, 'update'])->name('settings.update');
+
+        Route::resource('expense-categories', ExpenseCategoryController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
+
+        Route::get('expenses/{expense}/receipt', [ExpenseController::class, 'downloadReceipt'])
+            ->name('expenses.receipt');
+        Route::resource('expenses', ExpenseController::class);
+
+        Route::get('bank-connections', [BankConnectionController::class, 'index'])->name('bank-connections.index');
+        Route::post('bank-connections/connect', [BankConnectionController::class, 'connect'])->name('bank-connections.connect');
+        Route::get('bank-connections/oauth/callback', [BankConnectionController::class, 'callback'])->name('bank-connections.callback');
+        Route::post('bank-connections/{bankConnection}/sync', [BankConnectionController::class, 'sync'])->name('bank-connections.sync');
+        Route::delete('bank-connections/{bankConnection}', [BankConnectionController::class, 'destroy'])->name('bank-connections.destroy');
+
+        Route::get('bank-transactions', [BankTransactionController::class, 'index'])->name('bank-transactions.index');
+
+        Route::get('reconciliation', [ReconciliationController::class, 'index'])->name('reconciliation.index');
+        Route::post('reconciliation/match', [ReconciliationController::class, 'match'])->name('reconciliation.match');
+        Route::delete('reconciliation/{reconciliation}', [ReconciliationController::class, 'destroy'])->name('reconciliation.destroy');
+    });
 });
 
 // Welcome-email landing page. Drops any stale session that doesn't match the

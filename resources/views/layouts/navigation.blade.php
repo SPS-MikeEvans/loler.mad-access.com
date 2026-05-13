@@ -29,6 +29,42 @@
                             <x-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
                                 {{ __('Liabilities') }}
                             </x-nav-link>
+                            <div class="hidden sm:flex sm:items-center">
+                                <x-dropdown align="left" width="56">
+                                    <x-slot name="trigger">
+                                        <button @class([
+                                            'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 focus:outline-none transition duration-150 ease-in-out',
+                                            'border-brand-yellow text-white' => request()->routeIs('accounting.*'),
+                                            'border-transparent text-white/70 hover:text-white hover:border-white/30' => ! request()->routeIs('accounting.*'),
+                                        ])>
+                                            {{ __('Accounting') }}
+                                            <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </x-slot>
+                                    <x-slot name="content">
+                                        <x-dropdown-link :href="route('accounting.settings.edit')">
+                                            {{ __('Business Settings') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.expense-categories.index')">
+                                            {{ __('Expense Categories') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.expenses.index')">
+                                            {{ __('Expenses') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.bank-connections.index')">
+                                            {{ __('Bank Connections') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.bank-transactions.index')">
+                                            {{ __('Bank Transactions') }}
+                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.reconciliation.index')">
+                                            {{ __('Reconciliation') }}
+                                        </x-dropdown-link>
+                                    </x-slot>
+                                </x-dropdown>
+                            </div>
                             <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                                 {{ __('Users') }}
                             </x-nav-link>
@@ -127,6 +163,27 @@
                 @if(auth()->user()->isAdmin())
                     <x-responsive-nav-link :href="route('liabilities.edit')" :active="request()->routeIs('liabilities.edit')">
                         {{ __('Liabilities') }}
+                    </x-responsive-nav-link>
+                    <div class="pt-2">
+                        <p class="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Accounting</p>
+                    </div>
+                    <x-responsive-nav-link :href="route('accounting.settings.edit')" :active="request()->routeIs('accounting.settings.*')">
+                        {{ __('Business Settings') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.expense-categories.index')" :active="request()->routeIs('accounting.expense-categories.*')">
+                        {{ __('Expense Categories') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.expenses.index')" :active="request()->routeIs('accounting.expenses.*')">
+                        {{ __('Expenses') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.bank-connections.index')" :active="request()->routeIs('accounting.bank-connections.*')">
+                        {{ __('Bank Connections') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.bank-transactions.index')" :active="request()->routeIs('accounting.bank-transactions.*')">
+                        {{ __('Bank Transactions') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.reconciliation.index')" :active="request()->routeIs('accounting.reconciliation.*')">
+                        {{ __('Reconciliation') }}
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                         {{ __('Users') }}

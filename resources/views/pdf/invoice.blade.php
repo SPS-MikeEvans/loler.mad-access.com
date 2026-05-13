@@ -46,12 +46,45 @@
         .notes-box { background: #fffbeb; border: 1px solid #f59e0b; padding: 6px 10px; font-size: 9.5pt; margin-bottom: 6mm; }
         .notes-label { font-weight: bold; margin-bottom: 3px; }
 
+        /* Payment instructions */
+        .pay-box { background: #f0f9ff; border: 1px solid #0284c7; padding: 8px 12px; font-size: 9.5pt; margin-bottom: 6mm; }
+        .pay-box .pay-label { font-weight: bold; color: #0c4a6e; text-transform: uppercase; letter-spacing: 0.08em; font-size: 8pt; margin-bottom: 4px; }
+        .pay-box table { width: 100%; border-collapse: collapse; }
+        .pay-box td { padding: 2px 4px; border: none; vertical-align: top; }
+        .pay-box td.pay-key { font-weight: bold; color: #1a1a1a; width: 30%; }
+        .pay-box td.pay-val { color: #1a1a1a; }
+        .pay-ref { margin-top: 6px; font-size: 9pt; color: #1a1a1a; }
+
+        /* PAID watermark */
+        .paid-watermark { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%) rotate(-28deg); font-size: 110pt; font-weight: bold; color: #16a34a; opacity: 0.16; letter-spacing: 0.08em; pointer-events: none; }
+
+        /* Status pill in title block */
+        .status-pill { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .status-overdue { background: #fee2e2; color: #991b1b; }
+        .status-cancelled { background: #fef9c3; color: #854d0e; }
+        .status-sent { background: #dbeafe; color: #1e40af; }
+
         /* Footer */
         .doc-footer { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid #ccc; font-size: 8.5pt; color: #666; text-align: center; }
     </style>
 </head>
 <body>
-<div class="page">
+@php
+    $statusValue = $invoice->status instanceof \App\Enums\InvoiceStatus
+        ? $invoice->status->value
+        : (string) $invoice->status;
+    $isPaid = $statusValue === 'paid';
+    $isCancelled = $statusValue === 'cancelled';
+    $isOverdue = $statusValue === 'overdue';
+    $outstanding = method_exists($invoice, 'outstandingAmount') ? $invoice->outstandingAmount() : null;
+    $hasPartial = $outstanding !== null && $outstanding > 0.005 && $outstanding < (float) $invoice->total_amount;
+@endphp
+<div class="page" style="position: relative;">
+
+    @if($isPaid)
+        <div class="paid-watermark">PAID</div>
+    @endif
 
     {{-- ── Branded Header ── --}}
     <table class="brand-header">
@@ -81,7 +114,11 @@
                 <div class="inv-meta">
                     <strong>Invoice No:</strong> {{ $invoice->invoice_number }}<br>
                     <strong>Issued:</strong> {{ $invoice->issued_date->format('d F Y') }}<br>
-                    <strong>Period:</strong> {{ $invoice->period_from->format('d M Y') }} – {{ $invoice->period_to->format('d M Y') }}
+                    @if($invoice->due_date)
+                        <strong>Due:</strong> {{ $invoice->due_date->format('d F Y') }}<br>
+                    @endif
+                    <strong>Period:</strong> {{ $invoice->period_from->format('d M Y') }} – {{ $invoice->period_to->format('d M Y') }}<br>
+                    <span class="status-pill status-{{ $statusValue }}">{{ ucfirst($statusValue) }}</span>
                 </div>
             </td>
         </tr>
@@ -158,8 +195,51 @@
                 <td colspan="5" style="text-align:right;">Total</td>
                 <td class="amount-col">£{{ number_format($invoice->total_amount, 2) }}</td>
             </tr>
+            @if ($hasPartial)
+                <tr>
+                    <td colspan="5" style="text-align:right; color:#991b1b; font-weight:bold;">Outstanding</td>
+                    <td class="amount-col" style="color:#991b1b; font-weight:bold;">£{{ number_format($outstanding, 2) }}</td>
+                </tr>
+            @endif
         </tbody>
     </table>
+
+    {{-- ── Payment instructions ── --}}
+    @if(! $isPaid && ! $isCancelled && isset($businessSettings) && $businessSettings->hasBanking())
+        <div class="pay-box">
+            <div class="pay-label">Payment Instructions</div>
+            <table>
+                <tr>
+                    <td class="pay-key">Account holder</td>
+                    <td class="pay-val">{{ $businessSettings->account_holder }}</td>
+                </tr>
+                <tr>
+                    <td class="pay-key">Bank</td>
+                    <td class="pay-val">{{ $businessSettings->bank_name }}</td>
+                </tr>
+                <tr>
+                    <td class="pay-key">Sort code</td>
+                    <td class="pay-val">{{ implode('-', str_split($businessSettings->sort_code, 2)) }}</td>
+                </tr>
+                <tr>
+                    <td class="pay-key">Account number</td>
+                    <td class="pay-val">{{ $businessSettings->account_number }}</td>
+                </tr>
+                @if($businessSettings->iban)
+                    <tr>
+                        <td class="pay-key">IBAN</td>
+                        <td class="pay-val">{{ $businessSettings->iban }}</td>
+                    </tr>
+                @endif
+            </table>
+            <div class="pay-ref">
+                <strong>Reference:</strong> {{ $invoice->invoice_number }}
+                @if($businessSettings->reference_instructions)
+                    <br>{{ $businessSettings->reference_instructions }}
+                @endif
+            </div>
+        </div>
+    @endif
 
     {{-- ── Notes ── --}}
     @if ($invoice->notes)
