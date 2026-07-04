@@ -167,58 +167,72 @@
                 </button>
             </div>
 
-            {{-- Search + filters --}}
-            <div class="px-5 pt-4 pb-3 shrink-0 space-y-3 border-b border-gray-100">
+            {{-- Search (pinned) --}}
+            <div class="px-5 pt-4 pb-3 shrink-0 border-b border-gray-100">
                 <input x-model="search"
                        type="search"
                        placeholder="Search by name or brand…"
                        x-init="$nextTick(() => { if (open) $el.focus() })"
                        x-effect="if (open) $nextTick(() => $el.focus())"
                        class="block w-full rounded-xl border-gray-300 text-sm shadow-sm focus:border-brand-red focus:ring-brand-red">
+            </div>
 
-                {{-- Category pills --}}
-                <div x-data="{ expanded: false }">
-                    <div :class="expanded ? '' : 'max-h-8 overflow-hidden'"
-                         class="flex flex-wrap gap-2 transition-all">
-                        <button type="button" @click="activeCategory = ''"
+            {{-- Filters + results (single scroll region) --}}
+            <div class="overflow-y-auto flex-1 px-5 py-4">
+                {{-- Category filter (collapsible) --}}
+                <div x-data="{ expanded: window.matchMedia('(min-width: 640px)').matches }" class="border-b border-gray-100 pb-2">
+                    <button type="button" @click="expanded = !expanded"
+                            class="w-full flex items-center justify-between gap-2 py-2 text-left">
+                        <span class="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Category
+                            <span x-show="activeCategory !== ''" x-cloak
+                                  class="normal-case tracking-normal px-2 py-0.5 rounded-full bg-brand-navy text-white font-medium"
+                                  x-text="activeCategory"></span>
+                        </span>
+                        <svg class="h-4 w-4 shrink-0 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="expanded" class="flex flex-wrap gap-2 pb-2">
+                        <button type="button" @click="activeCategory = ''; if (window.innerWidth < 640) expanded = false"
                                 :class="activeCategory === '' ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                                 class="px-3 py-1 rounded-full text-xs font-medium transition">All</button>
                         @foreach ($categories as $cat)
-                            <button type="button" @click="activeCategory = {{ Js::from($cat) }}"
+                            <button type="button" @click="activeCategory = {{ Js::from($cat) }}; if (window.innerWidth < 640) expanded = false"
                                     :class="activeCategory === {{ Js::from($cat) }} ? 'bg-brand-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                                     class="px-3 py-1 rounded-full text-xs font-medium transition">{{ $cat }}</button>
                         @endforeach
                     </div>
-                    @if ($categories->count() > 5)
-                        <button type="button" @click="expanded = !expanded"
-                                class="mt-1 text-xs text-brand-navy hover:text-brand-red font-medium"
-                                x-text="expanded ? 'Show fewer categories' : 'Show all categories'"></button>
-                    @endif
                 </div>
 
-                {{-- Brand pills --}}
-                <div x-data="{ expanded: false }">
-                    <div :class="expanded ? '' : 'max-h-8 overflow-hidden'"
-                         class="flex flex-wrap gap-2 transition-all">
-                        <button type="button" @click="activeBrand = ''"
+                {{-- Brand filter (collapsible) --}}
+                <div x-data="{ expanded: window.matchMedia('(min-width: 640px)').matches }" class="border-b border-gray-100 pb-2 mb-3">
+                    <button type="button" @click="expanded = !expanded"
+                            class="w-full flex items-center justify-between gap-2 py-2 text-left">
+                        <span class="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Brand
+                            <span x-show="activeBrand !== ''" x-cloak
+                                  class="normal-case tracking-normal px-2 py-0.5 rounded-full bg-brand-red text-white font-medium"
+                                  x-text="activeBrand"></span>
+                        </span>
+                        <svg class="h-4 w-4 shrink-0 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="expanded" class="flex flex-wrap gap-2 pb-2">
+                        <button type="button" @click="activeBrand = ''; if (window.innerWidth < 640) expanded = false"
                                 :class="activeBrand === '' ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                                 class="px-3 py-1 rounded-full text-xs font-medium transition">All Brands</button>
                         @foreach ($brands as $brand)
-                            <button type="button" @click="activeBrand = {{ Js::from($brand) }}"
+                            <button type="button" @click="activeBrand = {{ Js::from($brand) }}; if (window.innerWidth < 640) expanded = false"
                                     :class="activeBrand === {{ Js::from($brand) }} ? 'bg-brand-red text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                                     class="px-3 py-1 rounded-full text-xs font-medium transition">{{ $brand }}</button>
                         @endforeach
                     </div>
-                    @if ($brands->count() > 5)
-                        <button type="button" @click="expanded = !expanded"
-                                class="mt-1 text-xs text-brand-navy hover:text-brand-red font-medium"
-                                x-text="expanded ? 'Show fewer brands' : 'Show all brands'"></button>
-                    @endif
                 </div>
-            </div>
 
-            {{-- Results (scrollable) --}}
-            <div class="overflow-y-auto flex-1 px-5 py-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <template x-for="type in filtered" :key="type.id">
                         <button type="button" @click="selectType(type)"
