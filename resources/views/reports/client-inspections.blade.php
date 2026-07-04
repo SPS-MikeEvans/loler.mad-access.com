@@ -92,7 +92,7 @@
                     @endphp
                     <tr>
                         <td>{{ $insp->inspection_date->format('d M Y') }}</td>
-                        <td>{{ $item->kitType->name }}</td>
+                        <td>{{ $item->typeName() }}</td>
                         <td>{{ $item->asset_tag ?? '—' }}</td>
                         <td>{{ $item->serial_no ?? '—' }}</td>
                         <td>{{ $insp->inspector->name }}</td>

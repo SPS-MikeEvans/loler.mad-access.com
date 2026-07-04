@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
-            {{ $kitItem->kitType->name }}
+            {{ $kitItem->typeName() }}
             @if ($kitItem->asset_tag)
                 <span class="text-white/70 font-normal text-lg">({{ $kitItem->asset_tag }})</span>
             @endif
@@ -28,7 +28,12 @@
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Equipment Type</dt>
-                            <dd class="mt-1 text-gray-900">{{ $kitItem->kitType->name }}</dd>
+                            <dd class="mt-1 text-gray-900">
+                                {{ $kitItem->typeName() }}
+                                @if ($kitItem->isCustomType())
+                                    <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">custom — no catalog type assigned</span>
+                                @endif
+                            </dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Client</dt>

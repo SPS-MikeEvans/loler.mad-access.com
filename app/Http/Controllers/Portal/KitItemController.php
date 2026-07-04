@@ -61,11 +61,9 @@ class KitItemController extends Controller
     {
         $client = auth()->user()->client;
         $kitTypes = KitType::orderBy('name')->get();
-        $categories = $kitTypes->pluck('category')->filter()->unique()->sort()->values();
-        $brands = $kitTypes->pluck('brand')->filter()->unique()->sort()->values();
         $kitGroups = $client ? $client->kitGroups()->orderBy('name')->get() : collect();
 
-        return view('portal.kit.create', compact('kitTypes', 'categories', 'brands', 'kitGroups'));
+        return view('portal.kit.create', compact('kitTypes', 'kitGroups'));
     }
 
     public function store(StorePortalKitItemRequest $request, CreateKitItemBlock $createKitItemBlock): RedirectResponse

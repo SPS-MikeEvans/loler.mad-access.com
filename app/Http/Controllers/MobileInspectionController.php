@@ -26,8 +26,13 @@ class MobileInspectionController extends Controller
         return redirect()->route('mobile.inspect.start', $kitItem);
     }
 
-    public function start(KitItem $kitItem): View
+    public function start(KitItem $kitItem): View|RedirectResponse
     {
+        if ($kitItem->isCustomType()) {
+            return redirect()->route('clients.kit-items.show', [$kitItem->client_id, $kitItem])
+                ->with('error', 'Assign an equipment type before recording an inspection.');
+        }
+
         $kitItem->load(['kitType', 'client']);
 
         $user = auth()->user();
@@ -44,6 +49,11 @@ class MobileInspectionController extends Controller
 
     public function createDraft(Request $request, KitItem $kitItem): RedirectResponse
     {
+        if ($kitItem->isCustomType()) {
+            return redirect()->route('clients.kit-items.show', [$kitItem->client_id, $kitItem])
+                ->with('error', 'Assign an equipment type before recording an inspection.');
+        }
+
         $kitItem->load('kitType');
 
         $user = auth()->user();

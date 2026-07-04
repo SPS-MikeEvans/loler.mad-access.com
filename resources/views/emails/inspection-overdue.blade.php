@@ -6,7 +6,7 @@ The following equipment has passed its LOLER Thorough Examination due date and h
 | | |
 |---|---|
 | **Client** | {{ $kitItem->client->name }} |
-| **Equipment Type** | {{ $kitItem->kitType->name }} |
+| **Equipment Type** | {{ $kitItem->typeName() }} |
 | **Asset Tag** | {{ $kitItem->asset_tag ?? '—' }} |
 | **Serial No.** | {{ $kitItem->serial_no ?? '—' }} |
 | **Due Date** | {{ $kitItem->next_inspection_due->format('d F Y') }} |

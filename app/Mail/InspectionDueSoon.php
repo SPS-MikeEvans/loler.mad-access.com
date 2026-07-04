@@ -18,7 +18,7 @@ class InspectionDueSoon extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'LOLER Inspection Due Soon — ' . $this->kitItem->kitType->name,
+            subject: 'LOLER Inspection Due Soon — '.$this->kitItem->typeName(),
         );
     }
 

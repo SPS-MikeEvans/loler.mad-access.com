@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Job;
 use App\Models\KitItem;
 use App\Models\KitType;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,16 +135,18 @@ class KitItemController extends Controller
     {
         $data = $request->validated();
         $data['lifting_people'] = $request->boolean('lifting_people');
+        $data['kit_type_id'] = $data['kit_type_id'] ?? null;
+        $data['custom_type_name'] = $data['custom_type_name'] ?? null;
 
         if (empty($data['next_inspection_due'])) {
-            $kitType = KitType::find($data['kit_type_id']);
+            $kitType = empty($data['kit_type_id']) ? null : KitType::find($data['kit_type_id']);
             $startDate = $data['first_use_date']
                 ?? $data['purchase_date']
                 ?? $kitItem->first_use_date
                 ?? $kitItem->purchase_date
                 ?? null;
 
-            if ($startDate) {
+            if ($kitType && $startDate) {
                 $intervalMonths = $data['lifting_people']
                     ? min(6, $kitType->interval_months)
                     : $kitType->interval_months;

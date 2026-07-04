@@ -1,0 +1,222 @@
+==============================================================
+ OPEN BANKING CONNECTION — SETUP INSTRUCTIONS
+ Provider: GoCardless Bank Account Data API (TIDE via Open Banking)
+==============================================================
+
+WHY THIS PROVIDER
+-----------------
+TIDE does not publish a direct merchant API. The standard way to pull
+a TIDE feed into a third-party app is via the UK's Open Banking
+framework using an aggregator. We use GoCardless Bank Account Data
+(formerly Nordigen) because it has a free tier and supports TIDE.
+
+The connection is consent-based and expires after 90 days. After that
+the admin must re-link the bank from inside the app.
+
+
+==============================================================
+ STEP 1 — CREATE A GoCardless BANK ACCOUNT DATA ACCOUNT
+==============================================================
+
+1. Go to:           https://bankaccountdata.gocardless.com/
+2. Click "Sign up" (top right). Use a business email.
+3. Verify the email and complete the short company-details form.
+4. Once signed in, switch to the LIVE environment (toggle at top).
+   * The Sandbox environment also exists if you want to test first.
+5. Confirm you can see "User Secrets" in the left-hand nav.
+
+
+==============================================================
+ STEP 2 — GENERATE YOUR API SECRETS
+==============================================================
+
+1. Left nav -> "User Secrets".
+2. Click "Create new".
+3. Give it a name like "loler-kit production".
+4. Copy and save BOTH values shown:
+
+        SECRET_ID   = <long uuid-like string>
+        SECRET_KEY  = <long opaque string>
+
+   IMPORTANT: the SECRET_KEY is shown ONCE. If you lose it you must
+   create a new secret pair. Treat both like passwords — do not paste
+   into Slack, do not commit them.
+
+
+==============================================================
+ STEP 3 — ADD THE SECRETS TO YOUR ENVIRONMENT
+==============================================================
+
+Edit the production .env file (NOT the example file, NOT a commit).
+On the server, run:
+
+        nano /path/to/loler-kit/.env
+
+Add these lines (replace the placeholders):
+
+        GOCARDLESS_SECRET_ID="paste-your-secret-id-here"
+        GOCARDLESS_SECRET_KEY="paste-your-secret-key-here"
+        GOCARDLESS_BASE_URL="https://bankaccountdata.gocardless.com/api/v2"
+        GOCARDLESS_REDIRECT_URI="${APP_URL}/accounting/bank-connections/oauth/callback"
+        GOCARDLESS_TIDE_INSTITUTION_ID="TIDE_TIDEGB22"
+        GOCARDLESS_AGREEMENT_DAYS=90
+        EXPENSE_RECEIPT_DISK=local
+
+Save and exit. Then reload config:
+
+        php artisan config:clear
+        php artisan config:cache
+
+
+==============================================================
+ STEP 4 — RUN THE ACCOUNTING SETUP
+==============================================================
+
+From the project root on the server (one-time, idempotent):
+
+        php artisan migrate --force
+        php artisan accounting:setup
+
+The setup command:
+  * creates the singleton business_settings row,
+  * seeds the default expense categories (Fuel, Tools, etc.),
+  * is safe to re-run.
+
+
+==============================================================
+ STEP 5 — MAKE SURE THE QUEUE WORKER IS RUNNING
+==============================================================
+
+The bank-feed pull and chase emails dispatch onto the queue. On the
+server make sure a worker is running, e.g. via supervisor:
+
+        php artisan queue:work --sleep=3 --tries=1
+
+Also make sure the scheduler cron is installed (one minute crontab):
+
+        * * * * * cd /path/to/loler-kit && php artisan schedule:run >> /dev/null 2>&1
+
+This drives:
+  * invoices:mark-overdue        (06:00 daily)
+  * invoices:send-chases         (09:00 daily)
+  * bank-feed:pull               (hourly)
+  * accounting:check-bank-expiry (05:30 daily)
+
+
+==============================================================
+ STEP 6 — CONNECT TIDE IN THE APP
+==============================================================
+
+1. Log in as an admin user.
+2. Top nav -> "Accounting" -> "Bank Connections".
+3. Click the green "Connect TIDE" button.
+4. You are redirected to the GoCardless consent screen.
+5. You will be asked to log in to TIDE Online Banking and authorise
+   read-only access to:
+      * account details
+      * balances
+      * 90 days of transactions
+6. After approval you are redirected back to:
+      /accounting/bank-connections
+   The connection should now show:
+      Status:  Linked
+      Linked:  today
+      Expires: today + 90 days
+
+
+==============================================================
+ STEP 7 — PULL THE FIRST BATCH OF TRANSACTIONS
+==============================================================
+
+You can wait for the hourly cron, or trigger immediately:
+
+  * Option A (in-app):
+      On the Bank Connections page click "Sync now" against the
+      TIDE connection. A queued job runs in the background.
+
+  * Option B (CLI):
+      php artisan bank-feed:pull --sync
+
+Then visit "Accounting" -> "Bank Transactions". You should see the
+last 90 days of TIDE transactions, oldest -> newest.
+
+
+==============================================================
+ STEP 8 — RECONCILE PAYMENTS AND EXPENSES
+==============================================================
+
+1. "Accounting" -> "Reconciliation".
+2. Left column: unreconciled bank transactions.
+   Each one shows inline "Suggested matches" — invoices within
+   £5 and 14 days of the amount/date are auto-suggested.
+3. Click "Match" against a suggestion to reconcile.
+   * For a full match: invoice flips to Paid, PDF gets the watermark,
+     payment instructions hide, an audit row is written.
+   * For a partial payment: enter a "Matched amount" smaller than the
+     transaction amount. The invoice stays Sent/Overdue with the
+     outstanding balance shown.
+4. Recent matches show at the bottom with an "Unmatch" button
+   (typed-phrase + password confirmation, audited).
+
+
+==============================================================
+ STEP 9 — DEALING WITH THE 90-DAY EXPIRY
+==============================================================
+
+After 90 days the connection expires. The scheduled command
+accounting:check-bank-expiry will:
+  * stamp the connection status as 'expired',
+  * fire the BankConnectionExpired event.
+
+The Bank Connections page will show a red "Re-link required" badge
+and a "Re-connect" button. Click it and complete the GoCardless
+consent flow again. All historic data and reconciliations are
+preserved — only the live feed needs re-authorising.
+
+
+==============================================================
+ TROUBLESHOOTING
+==============================================================
+
+* "Could not start bank connection"
+    -> Check SECRET_ID and SECRET_KEY are correct in .env and that
+       config:cache was re-run.
+    -> Check the server can reach bankaccountdata.gocardless.com.
+
+* "AccessExpiredError" in storage/logs/laravel.log
+    -> The 90-day consent has lapsed. Re-link from the UI.
+
+* No transactions appearing after Sync now
+    -> Check storage/logs/laravel.log for "Bank feed pull failed".
+    -> Make sure the queue worker is running.
+    -> GoCardless rate-limits free accounts to ~4 calls per account
+       per day; back off and retry tomorrow.
+
+* "GoCardless token exchange failed: 401"
+    -> The secret_key was rotated or copied incorrectly. Generate a
+       new pair in the GoCardless dashboard and update .env.
+
+* Need to revoke without using the UI
+    -> tinker:
+        $c = App\Models\BankConnection::find(<id>);
+        app(App\Services\BankFeed\BankFeedProvider::class)
+            ->revoke($c->requisition_id);
+        $c->update(['status' => 'revoked']);
+
+
+==============================================================
+ SECURITY NOTES
+==============================================================
+
+* requisition_id and agreement_id are encrypted at rest using
+  Laravel's 'encrypted' cast. Anyone with raw DB access cannot read
+  them without APP_KEY.
+* The GoCardless API key is read-only over the user's bank data.
+  It cannot move money.
+* All destructive actions (remove connection, cancel invoice,
+  delete expense, unmatch reconciliation) require typed-phrase
+  confirmation AND password re-confirmation AND are audited.
+* NEVER commit the .env file. Use Forge / Vapor / vault secrets in
+  production.
+
+==============================================================

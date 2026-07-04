@@ -18,7 +18,7 @@ class InspectionOverdue extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'LOLER Inspection OVERDUE — ' . $this->kitItem->kitType->name,
+            subject: 'LOLER Inspection OVERDUE — '.$this->kitItem->typeName(),
         );
     }
 

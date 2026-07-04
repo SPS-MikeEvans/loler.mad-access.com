@@ -28,6 +28,16 @@ function makePortalSetup(string $suffix = ''): array
     return [$client, $user, $kitType];
 }
 
+it('renders the portal create form with the equipment type picker', function () {
+    [$client, $user, $kitType] = makePortalSetup('render');
+
+    $this->actingAs($user)
+        ->get(route('portal.kit.create'))
+        ->assertSuccessful()
+        ->assertSee('Choose equipment type…')
+        ->assertSee($kitType->name);
+});
+
 it('allows a client viewer to submit a new kit item with pending review status', function () {
     [$client, $user, $kitType] = makePortalSetup('create');
 

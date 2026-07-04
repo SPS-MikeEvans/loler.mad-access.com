@@ -18,7 +18,8 @@ class StoreKitItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kit_type_id' => ['required', 'exists:kit_types,id'],
+            'kit_type_id' => ['nullable', 'exists:kit_types,id', 'required_without:custom_type_name'],
+            'custom_type_name' => ['nullable', 'string', 'max:100', 'required_without:kit_type_id'],
             'asset_tag' => ['nullable', 'string', 'max:100'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
             'asset_tag_prefix' => ['nullable', 'string', 'max:80'],
@@ -32,6 +33,15 @@ class StoreKitItemRequest extends FormRequest
             'swl_kg' => ['nullable', 'integer', 'min:0'],
             'lifting_people' => ['nullable', 'boolean'],
             'status' => ['nullable', 'in:in_service,inspection_due,quarantined,retired'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'kit_type_id.required_without' => 'Please select an equipment type or enter a custom name.',
+            'custom_type_name.required_without' => 'Please select an equipment type or enter a custom name.',
         ];
     }
 }

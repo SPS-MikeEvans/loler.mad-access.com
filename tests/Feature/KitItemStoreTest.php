@@ -182,6 +182,72 @@ it('attaches all block-created kit items to the return_to_job target', function 
     expect($job->kitItems()->count())->toBe(4);
 });
 
+it('renders the create form with the equipment type picker', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeStoreClient();
+    makeStoreKitType();
+
+    $this->actingAs($admin)
+        ->get(route('clients.kit-items.create', $client))
+        ->assertSuccessful()
+        ->assertSee('Choose equipment type…')
+        ->assertSee('Store Test Type');
+});
+
+it('stores a kit item with a custom type name and no kit type', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeStoreClient();
+
+    $this->actingAs($admin)
+        ->post(route('clients.kit-items.store', $client), [
+            'custom_type_name' => 'Singing Rock Roof Master Harness',
+            'manufacturer' => 'Singing Rock',
+            'first_use_date' => '2026-01-10',
+            'status' => 'in_service',
+        ])
+        ->assertRedirect(route('clients.kit-items.index', $client));
+
+    $item = KitItem::where('client_id', $client->id)->first();
+
+    expect($item->kit_type_id)->toBeNull();
+    expect($item->custom_type_name)->toBe('Singing Rock Roof Master Harness');
+    expect($item->next_inspection_due)->toBeNull();
+    expect($item->isCustomType())->toBeTrue();
+});
+
+it('rejects a kit item with neither a kit type nor a custom name', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeStoreClient();
+
+    $this->actingAs($admin)
+        ->post(route('clients.kit-items.store', $client), [
+            'manufacturer' => 'Petzl',
+            'status' => 'in_service',
+        ])
+        ->assertSessionHasErrors(['kit_type_id', 'custom_type_name']);
+
+    expect(KitItem::where('client_id', $client->id)->count())->toBe(0);
+});
+
+it('stores a kit item when both a kit type and a custom name are provided', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $client = makeStoreClient();
+    $kitType = makeStoreKitType();
+
+    $this->actingAs($admin)
+        ->post(route('clients.kit-items.store', $client), [
+            'kit_type_id' => $kitType->id,
+            'custom_type_name' => 'Alt Name',
+            'status' => 'in_service',
+        ])
+        ->assertRedirect(route('clients.kit-items.index', $client));
+
+    $item = KitItem::where('client_id', $client->id)->first();
+
+    expect($item->kit_type_id)->toBe($kitType->id);
+    expect($item->typeName())->toBe($kitType->name);
+});
+
 it('rejects invalid block quantities', function (int $quantity) {
     $admin = User::factory()->create(['role' => 'admin']);
     $client = makeStoreClient();

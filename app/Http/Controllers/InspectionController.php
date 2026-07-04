@@ -34,6 +34,11 @@ class InspectionController extends Controller
 
     public function create(Client $client, KitItem $kitItem): View|RedirectResponse
     {
+        if ($kitItem->isCustomType()) {
+            return redirect()->route('clients.kit-items.show', [$client, $kitItem])
+                ->with('error', 'Assign an equipment type before recording an inspection.');
+        }
+
         if ($this->isMobileRequest()) {
             return redirect()->route('mobile.inspect.start', $kitItem);
         }

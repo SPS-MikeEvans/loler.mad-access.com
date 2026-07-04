@@ -9,55 +9,34 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
-                    @php
-                        $kitTypeData = $kitTypes->keyBy('id')->map(fn ($t) => [
-                            'brand'           => $t->brand,
-                            'swl_description' => $t->swl_description,
-                            'lifts_people'    => $t->lifts_people,
-                        ]);
-                    @endphp
-
                     <form method="POST" action="{{ route('clients.kit-items.store', $client) }}" class="space-y-6"
                         x-data="{
-                            types: {{ Js::from($kitTypeData) }},
                             manufacturer: {{ Js::from(old('manufacturer', '')) }},
                             swlKg: {{ Js::from(old('swl_kg', '')) }},
                             liftingPeople: {{ old('lifting_people', true) ? 'true' : 'false' }},
                             autoFilled: { manufacturer: false, swlKg: false },
-                            selectType(id) {
-                                const type = this.types[id];
-                                if (!type) {
-                                    this.autoFilled = { manufacturer: false, swlKg: false };
-                                    return;
-                                }
+                            applyType(type) {
                                 this.manufacturer = type.brand ?? '';
                                 this.autoFilled.manufacturer = !!type.brand;
                                 const match = (type.swl_description ?? '').match(/(\d+)\s*kg/i);
                                 this.swlKg = match ? match[1] : '';
                                 this.autoFilled.swlKg = !!match;
-                                this.liftingPeople = type.lifts_people;
+                                this.liftingPeople = type.lifts;
+                            },
+                            clearType() {
+                                this.autoFilled = { manufacturer: false, swlKg: false };
                             }
-                        }">
+                        }"
+                        @equipment-type-selected.window="applyType($event.detail)"
+                        @equipment-type-cleared.window="clearType()"
+                        @equipment-custom-confirmed.window="if (!String(manufacturer).trim()) manufacturer = $event.detail.manufacturer">
                         @csrf
 
-                        <div>
-                            <x-input-label for="kit_type_id" :value="__('Equipment Type')" />
-                            <select id="kit_type_id" name="kit_type_id" required
-                                x-on:change="selectType($event.target.value)"
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-brand-red focus:ring-brand-red">
-                                <option value="">Select type…</option>
-                                @foreach ($kitTypes->groupBy('category') as $category => $types)
-                                    <optgroup label="{{ $category }}">
-                                        @foreach ($types as $type)
-                                            <option value="{{ $type->id }}" {{ old('kit_type_id') == $type->id ? 'selected' : '' }}>
-                                                {{ $type->name }}{{ $type->brand ? ' (' . $type->brand . ')' : '' }}
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('kit_type_id')" class="mt-2" />
-                        </div>
+                        <x-equipment-type-picker
+                            :kit-types="$kitTypes"
+                            :selected-id="old('kit_type_id')"
+                            :custom-name="old('custom_type_name')"
+                            custom-hint="No review needed — you can assign a catalog type later." />
 
                         <div class="rounded-lg border border-gray-200 p-4">
                             <h3 class="text-sm font-semibold text-gray-900">Block creation</h3>

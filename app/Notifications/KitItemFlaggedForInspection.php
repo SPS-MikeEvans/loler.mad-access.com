@@ -26,10 +26,10 @@ class KitItemFlaggedForInspection extends Notification
     {
         $item = $this->kitItem;
         $message = (new MailMessage)
-            ->subject("Client Flagged Item for Inspection — {$item->kitType->name} ({$item->asset_tag})")
+            ->subject("Client Flagged Item for Inspection — {$item->typeName()} ({$item->asset_tag})")
             ->greeting('Inspection Required')
             ->line("**Client:** {$item->client->name}")
-            ->line("**Equipment:** {$item->kitType->name}")
+            ->line("**Equipment:** {$item->typeName()}")
             ->line('**Asset Tag:** '.($item->asset_tag ?? '—'))
             ->line('**Serial No.:** '.($item->serial_no ?? '—'));
 
