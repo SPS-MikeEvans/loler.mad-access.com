@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\InvoiceStatus;
 use App\Events\InvoiceChased;
 use App\Mail\InvoiceChaseReminder;
 use App\Models\Invoice;
@@ -24,9 +23,7 @@ class SendInvoiceChasesCommand extends Command
         $skipped = 0;
 
         Invoice::query()
-            ->where('status', InvoiceStatus::Overdue->value)
-            ->whereNotNull('due_date')
-            ->whereNull('paid_at')
+            ->chaseable()
             ->with('client')
             ->chunkById(50, function ($invoices) use ($today, $cooldownThreshold, &$sent, &$skipped): void {
                 foreach ($invoices as $invoice) {

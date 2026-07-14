@@ -12,6 +12,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InspectionController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoiceManagementController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobPhotoController;
 use App\Http\Controllers\JobSignatureController;
@@ -141,6 +142,12 @@ Route::middleware(['auth', 'verified', 'role:admin,inspector'])->group(function 
         Route::delete('bank-connections/{bankConnection}', [BankConnectionController::class, 'destroy'])->name('bank-connections.destroy');
 
         Route::get('bank-transactions', [BankTransactionController::class, 'index'])->name('bank-transactions.index');
+
+        Route::get('invoices', [InvoiceManagementController::class, 'index'])->name('invoices.index');
+        Route::get('invoices/{invoice}/edit', [InvoiceManagementController::class, 'edit'])->name('invoices.edit');
+        Route::put('invoices/{invoice}', [InvoiceManagementController::class, 'update'])->name('invoices.update');
+        Route::post('invoices/{invoice}/pause-chases', [InvoiceManagementController::class, 'pauseChases'])->name('invoices.pause-chases');
+        Route::post('invoices/{invoice}/resume-chases', [InvoiceManagementController::class, 'resumeChases'])->name('invoices.resume-chases');
 
         Route::get('reconciliation', [ReconciliationController::class, 'index'])->name('reconciliation.index');
         Route::post('reconciliation/match', [ReconciliationController::class, 'match'])->name('reconciliation.match');

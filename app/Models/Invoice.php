@@ -54,6 +54,7 @@ class Invoice extends Model
             'sent_at' => 'datetime',
             'paid_at' => 'datetime',
             'last_chase_sent_at' => 'datetime',
+            'chase_emails_paused_at' => 'datetime',
         ];
     }
 
@@ -146,6 +147,7 @@ class Invoice extends Model
     {
         $query->where('status', InvoiceStatus::Overdue->value)
             ->whereNotNull('due_date')
-            ->whereNull('paid_at');
+            ->whereNull('paid_at')
+            ->whereNull('chase_emails_paused_at');
     }
 }

@@ -47,6 +47,9 @@
                                         <x-dropdown-link :href="route('accounting.settings.edit')">
                                             {{ __('Business Settings') }}
                                         </x-dropdown-link>
+                                        <x-dropdown-link :href="route('accounting.invoices.index')">
+                                            {{ __('Invoices') }}
+                                        </x-dropdown-link>
                                         <x-dropdown-link :href="route('accounting.expense-categories.index')">
                                             {{ __('Expense Categories') }}
                                         </x-dropdown-link>
@@ -169,6 +172,9 @@
                     </div>
                     <x-responsive-nav-link :href="route('accounting.settings.edit')" :active="request()->routeIs('accounting.settings.*')">
                         {{ __('Business Settings') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('accounting.invoices.index')" :active="request()->routeIs('accounting.invoices.*')">
+                        {{ __('Invoices') }}
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('accounting.expense-categories.index')" :active="request()->routeIs('accounting.expense-categories.*')">
                         {{ __('Expense Categories') }}

@@ -76,6 +76,39 @@ it('chases again after the cooldown', function () {
     Mail::assertQueued(InvoiceChaseReminder::class);
 });
 
+it('does not chase invoices with automated emails paused', function () {
+    $client = Client::factory()->create(['contact_email' => 'finance@example.com']);
+    $invoice = Invoice::factory()->create([
+        'client_id' => $client->id,
+        'status' => InvoiceStatus::Overdue->value,
+        'due_date' => now()->subDays(8)->toDateString(),
+        'paid_at' => null,
+        'last_chase_sent_at' => null,
+        'chase_emails_paused_at' => now(),
+    ]);
+
+    $this->artisan('invoices:send-chases')->assertSuccessful();
+
+    Mail::assertNothingQueued();
+    expect($invoice->fresh()->last_chase_sent_at)->toBeNull();
+});
+
+it('chases again once automated emails are resumed', function () {
+    $client = Client::factory()->create(['contact_email' => 'finance@example.com']);
+    Invoice::factory()->create([
+        'client_id' => $client->id,
+        'status' => InvoiceStatus::Overdue->value,
+        'due_date' => now()->subDays(8)->toDateString(),
+        'paid_at' => null,
+        'last_chase_sent_at' => null,
+        'chase_emails_paused_at' => null,
+    ]);
+
+    $this->artisan('invoices:send-chases')->assertSuccessful();
+
+    Mail::assertQueued(InvoiceChaseReminder::class);
+});
+
 it('does not chase paid or cancelled invoices', function () {
     $client = Client::factory()->create(['contact_email' => 'finance@example.com']);
     Invoice::factory()->paid()->create([
